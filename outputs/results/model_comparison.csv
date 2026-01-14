@@ -1,0 +1,3 @@
+Model,Architecture,Parameters (M),Avg Inference Time (ms),FPS,Has Segmentation,Model Size (MB)
+YOLOv8n-seg,YOLOv8 Nano,3.2,192.7022933959961,5.189351835813583,Yes,6.2
+MobileNet + Faster R-CNN,MobileNetV3 + FPN,19.4,341.2060737609863,2.930780185057598,No,38.5
