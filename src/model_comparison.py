@@ -10,8 +10,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, random_split
-import torchvision.transforms as transforms
-from torchvision import models
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,177 +19,162 @@ from tqdm import tqdm
 import time
 import pandas as pd
 from pathlib import Path
-from PIL import Image
-from datasets import load_dataset
 import sys
 from os.path import dirname, abspath
 
-# Add parent directory to path for imports
+# Add parent directory to path for imports (kept for consistency, though
+# we no longer import custom image-based CNNs in this script)
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
-
-# Import custom model
-from models.cnn_models import FishBiomassCNN
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-# Image size for models
-IMG_SIZE = 224  # Standard size for pretrained models
+"""Data loading and model comparison for fish biomass using local CSV data.
+
+This version does not depend on Hugging Face datasets or image data.
+Instead, it uses tabular measurements from the Fish Biomass dataset CSV.
+"""
 
 
-# ==================== DATA LOADING (Hugging Face) ====================
+# ==================== DATA LOADING (LOCAL CSV) ====================
 
-class HuggingFaceBiomassDataset(Dataset):
+class TabularBiomassDataset(Dataset):
+    """PyTorch Dataset for tabular fish measurements.
+
+    Expects a pandas DataFrame and lists of feature and target columns.
     """
-    Custom PyTorch Dataset for the Hugging Face fishnet.ai dataset.
-    It extracts images and calculates biomass from bounding box annotations.
-    """
-    def __init__(self, hf_dataset, transform=None):
-        self.hf_dataset = hf_dataset
-        self.transform = transform
+
+    def __init__(self, df: pd.DataFrame, feature_cols, target_col: str):
+        self.features = torch.tensor(df[feature_cols].values, dtype=torch.float32)
+        self.targets = torch.tensor(df[target_col].values, dtype=torch.float32).view(-1, 1)
 
     def __len__(self):
-        return len(self.hf_dataset)
+        return len(self.targets)
 
     def __getitem__(self, idx):
-        item = self.hf_dataset[idx]
-        image = item['image'].convert('RGB')
-        
-        # Calculate biomass proxy from bounding box area
-        # Assumes the first object is the primary fish
-        biomass = 0.0
-        if item['objects']:
-            bbox = item['objects']['bbox'][0]  # [xmin, ymin, xmax, ymax]
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            biomass = width * height
-        
-        if self.transform:
-            image = self.transform(image)
-            
-        return image, torch.tensor(biomass, dtype=torch.float32)
+        return self.features[idx], self.targets[idx]
 
 
 def get_data_loaders(batch_size=32, num_workers=0):
+    """Load local CSV data and prepare DataLoaders.
+
+    Uses data/raw/fish_measurements.csv and splits it into
+    train/test (80/20) for supervised regression.
     """
-    Load the fish dataset from Hugging Face and prepare DataLoaders.
-    Trying multiple available fish datasets.
-    """
-    print("="*60)
-    print("LOADING DATASET FROM HUGGING FACE")
-    print("="*60)
-    
-    # Try multiple fish-related datasets
-    dataset_options = [
-        ("keremberke/fish-detection", "full"),
-        ("Francesco/eurosat-fish", None),
-        ("detection-datasets/fish", None)
-    ]
-    
-    dataset = None
-    for dataset_name, split_name in dataset_options:
-        try:
-            print(f"Trying to load '{dataset_name}'...")
-            if split_name:
-                dataset = load_dataset(dataset_name, split_name, split='train[:500]')
-            else:
-                dataset = load_dataset(dataset_name, split='train[:500]')
-            print(f"Dataset '{dataset_name}' loaded successfully!")
-            break
-        except Exception as e:
-            print(f"  Failed: {e}")
-            continue
-    
-    if dataset is None:
-        print("\n" + "="*60)
-        print("ERROR: Could not load any fish dataset from Hugging Face.")
-        print("="*60)
-        print("\nPlease ensure:")
-        print("1. You have an internet connection")
-        print("2. You have the 'datasets' library installed: pip install datasets")
-        print("3. Try manually: from datasets import load_dataset")
-        print("   load_dataset('keremberke/fish-detection', 'full')")
+
+    print("=" * 60)
+    print("LOADING DATASET FROM LOCAL CSV")
+    print("=" * 60)
+
+    # Resolve CSV path relative to project root
+    project_root = Path(dirname(dirname(abspath(__file__))))
+    csv_path = project_root / "data" / "raw" / "fish_measurements.csv"
+
+    if not csv_path.exists():
+        print(f"ERROR: CSV file not found at {csv_path}")
         return None, None
 
-    # Define image transformations
-    train_transform = transforms.Compose([
-        transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    
-    test_transform = transforms.Compose([
-        transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    
-    # Create the full dataset object first
-    full_dataset = HuggingFaceBiomassDataset(dataset)
+    df = pd.read_csv(csv_path)
+    df = df.dropna()
+
+    # Define feature and target columns
+    feature_cols = ["Length1", "Length2", "Length3", "Height", "Width"]
+    target_col = "Weight"
+
+    missing_cols = [c for c in feature_cols + [target_col] if c not in df.columns]
+    if missing_cols:
+        print(f"ERROR: Missing expected columns in CSV: {missing_cols}")
+        return None, None
+
+    # Create full dataset
+    full_dataset = TabularBiomassDataset(df, feature_cols, target_col)
 
     # Split the dataset into training and testing sets
     print("Splitting dataset into training and testing sets (80/20)...")
     train_size = int(0.8 * len(full_dataset))
     test_size = len(full_dataset) - train_size
-    train_subset, test_subset = random_split(list(range(len(full_dataset))), [train_size, test_size], 
-                                             generator=torch.Generator().manual_seed(42))
-
-    # Create PyTorch datasets with transforms
-    train_dataset = HuggingFaceBiomassDataset(
-        [full_dataset.hf_dataset[i] for i in train_subset.indices], 
-        transform=train_transform
-    )
-    test_dataset = HuggingFaceBiomassDataset(
-        [full_dataset.hf_dataset[i] for i in test_subset.indices], 
-        transform=test_transform
+    train_dataset, test_dataset = random_split(
+        full_dataset,
+        [train_size, test_size],
+        generator=torch.Generator().manual_seed(42),
     )
 
     # Create PyTorch DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    
+
     print(f"\nTraining samples: {len(train_dataset)}")
     print(f"Test samples: {len(test_dataset)}")
-    
+
     return train_loader, test_loader
 
 
-# ==================== MODEL DEFINITIONS ====================
+TOP_LEVEL_INPUT_DIM = 5  # Length1, Length2, Length3, Height, Width
 
-class SimpleBiomassCNN(nn.Module):
-    """Simple CNN for biomass regression."""
-    def __init__(self):
-        super(SimpleBiomassCNN, self).__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
-            nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
-            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2, 2),
-        )
-        self.regressor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(64 * (IMG_SIZE // 8) * (IMG_SIZE // 8), 128), nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(128, 1)
-        )
+
+# ==================== MODEL DEFINITIONS (TABULAR) ====================
+
+class LinearBiomassRegressor(nn.Module):
+    """Single linear layer regressor for baseline comparison."""
+
+    def __init__(self, input_dim: int = TOP_LEVEL_INPUT_DIM):
+        super().__init__()
+        self.fc = nn.Linear(input_dim, 1)
+
     def forward(self, x):
-        x = self.features(x)
-        x = self.regressor(x)
-        return x
+        return self.fc(x)
 
-def get_pretrained_resnet18_regressor():
-    """Pretrained ResNet18 adapted for biomass regression."""
-    model = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
-    model.fc = nn.Linear(model.fc.in_features, 1)
-    return model
 
-def get_pretrained_efficientnet_regressor():
-    """Pretrained EfficientNet-B0 adapted for biomass regression."""
-    model = models.efficientnet_b0(weights=models.EfficientNet_B0_Weights.DEFAULT)
-    model.classifier[1] = nn.Linear(model.classifier[1].in_features, 1)
-    return model
+class SmallMLPBiomassRegressor(nn.Module):
+    """Two-layer MLP regressor."""
+
+    def __init__(self, input_dim: int = TOP_LEVEL_INPUT_DIM):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class MediumMLPBiomassRegressor(nn.Module):
+    """Three-layer MLP with hidden dimension 64."""
+
+    def __init__(self, input_dim: int = TOP_LEVEL_INPUT_DIM):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class DeepMLPBiomassRegressor(nn.Module):
+    """Deeper MLP with dropout for regularization."""
+
+    def __init__(self, input_dim: int = TOP_LEVEL_INPUT_DIM):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(64, 1),
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 
 # ==================== TRAINING & EVALUATION ====================
@@ -339,21 +322,21 @@ def main():
         print("Data loading failed. Exiting.")
         return
 
-    # Define models to compare
+    # Define models to compare (all operate on tabular measurements)
     model_configs = [
-        ('Custom FishBiomassCNN', FishBiomassCNN()),
-        ('SimpleBiomassCNN', SimpleBiomassCNN()),
-        ('ResNet18 Regressor', get_pretrained_resnet18_regressor()),
-        ('EfficientNet-B0 Regressor', get_pretrained_efficientnet_regressor()),
+        ("Linear Regressor", LinearBiomassRegressor()),
+        ("Small MLP Regressor", SmallMLPBiomassRegressor()),
+        ("Medium MLP Regressor", MediumMLPBiomassRegressor()),
+        ("Deep MLP Regressor", DeepMLPBiomassRegressor()),
     ]
     
     results = []
     histories = []
     model_names = []
     
-    print("\n" + "="*60)
-    print("BIOMASS ESTIMATION MODEL COMPARISON (Hugging Face Dataset)")
-    print("="*60)
+    print("\n" + "=" * 60)
+    print("BIOMASS ESTIMATION MODEL COMPARISON (Tabular CSV Dataset)")
+    print("=" * 60)
     
     for name, model in model_configs:
         print(f"\n{'='*60}\nTraining: {name}\n{'='*60}")
