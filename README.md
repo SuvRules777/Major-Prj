@@ -1,70 +1,130 @@
 # Smart Vision-Based Fish Biomass Estimation
 
-This project estimates fish biomass from images using YOLOv8-based fish detection and length-weight estimation.
+Computer vision pipeline for estimating fish biomass from images using YOLOv8 detection/segmentation and allometric length-weight equations.
 
-## Repository Layout
+## Project Overview
 
+This project combines:
+
+- Fish detection and segmentation from images (YOLOv8)
+- Pixel-to-length conversion and biomass estimation
+- Regression model benchmarking for biomass prediction from tabular measurements
+
+It includes data preparation, model training, inference, evaluation outputs, and notebooks for analysis.
+
+## Key Features
+
+- YOLOv8-based fish detection training pipeline
+- Automatic pseudo-label generation for dataset bootstrapping
+- Image-based biomass estimation using $W = a \cdot L^b$
+- Tabular regression model comparison (Linear + MLP variants)
+- Organized results in dedicated outputs and runs folders
+
+## Repository Structure
+
+```text
 Major-Prj/
-- data/
-  - raw/                     # Source measurement data
-  - processed/               # Processed tables and derived parameters
-  - noaa_fish/               # Detection dataset (images and labels)
-  - test_images/             # Inference test images
-- models/
-  - cnn_models.py            # CNN model definitions
-  - weights/                 # Pretrained model weights
-- notebooks/
-  - phase1_data_analysis.ipynb
-  - phase2_yolo_vision_and_comparison.ipynb
-- outputs/
-  - results/                 # CSV outputs
-  - visualizations/          # Plot/image outputs
-    - training/fish_detector/# Training preview plots/images
-- runs/
-  - train/
-    - fish_detector/         # Latest YOLO training run artifacts
-- src/
-  - train_fish_model.py      # Dataset prep + YOLO training
-  - run_biomass_estimation.py# Inference + biomass estimation
-  - model_comparison.py      # Biomass regressor comparison
-- requirements.txt
-- README.md
+├─ data/
+│  ├─ raw/                     # Original fish measurement data
+│  ├─ processed/               # Derived parameters / processed tables
+│  ├─ noaa_fish/               # YOLO dataset (images + labels)
+│  └─ test_images/             # Input images for biomass inference
+├─ models/
+│  ├─ cnn_models.py
+│  └─ weights/                 # Pretrained YOLO weights
+├─ notebooks/
+│  ├─ phase1_data_analysis.ipynb
+│  └─ phase2_yolo_vision_and_comparison.ipynb
+├─ outputs/
+│  ├─ results/                 # CSV metrics and predictions
+│  └─ visualizations/          # Charts and plots
+├─ runs/
+│  └─ train/fish_detector/     # YOLO training artifacts
+├─ src/
+│  ├─ train_fish_model.py
+│  ├─ run_biomass_estimation.py
+│  └─ model_comparison.py
+├─ requirements.txt
+└─ README.md
+```
 
-## What Was Cleaned
+## Requirements
 
-- Removed stale root-level result files and duplicate plots.
-- Consolidated model weights into models/weights.
-- Consolidated latest detector run into runs/train/fish_detector.
-- Removed temporary/editor-generated files.
-- Updated scripts to write outputs only under outputs/results and outputs/visualizations.
-
-## How To Run
+- Python 3.10+
+- pip
+- Optional GPU with CUDA for faster YOLO training/inference
 
 Install dependencies:
 
+```bash
 pip install -r requirements.txt
+```
 
-Train detector:
+## Quick Start
 
+### 1) Train Fish Detector
+
+```bash
 python src/train_fish_model.py
+```
 
-Run biomass estimation:
+What it does:
 
+- Prepares data and pseudo-labels from images in `data/test_images`
+- Splits data into train/validation sets under `data/noaa_fish`
+- Fine-tunes YOLOv8 and stores outputs in `runs/train/fish_detector`
+
+### 2) Run Biomass Estimation on Images
+
+```bash
 python src/run_biomass_estimation.py
+```
 
-Compare biomass models:
+Optional arguments:
 
+```bash
+python src/run_biomass_estimation.py --model runs/train/fish_detector/weights/best.pt --conf 0.25 --images data/test_images
+```
+
+What it does:
+
+- Detects fish in input images
+- Estimates fish length from detection geometry
+- Computes estimated biomass using allometric parameters
+- Saves predictions to `outputs/results/biomass_estimation_results.csv`
+
+### 3) Compare Regression Models (Tabular)
+
+```bash
 python src/model_comparison.py
+```
 
-## Output Locations
+What it does:
 
-- Biomass estimation CSV: outputs/results/biomass_estimation_results.csv
-- Detection metrics CSV: outputs/results/detection_metrics.csv
-- Model comparison CSV: outputs/results/model_comparison.csv
-- Generated plots: outputs/visualizations/
-- Training run visuals: outputs/visualizations/training/fish_detector/
+- Loads `data/raw/fish_measurements.csv`
+- Trains multiple regression baselines
+- Saves ranking metrics to `outputs/results/model_comparison.csv`
+- Generates plots in `outputs/visualizations`
 
-## Notes
+## Main Outputs
 
-- If pretrained YOLO weights are missing in models/weights, scripts fall back to Ultralytics auto-download.
-- Keep large generated artifacts in outputs/ and runs/ to avoid root-level clutter.
+- `outputs/results/biomass_estimation_results.csv`
+- `outputs/results/model_comparison.csv`
+- `outputs/visualizations/biomass_model_comparison_metrics.png`
+- `outputs/visualizations/biomass_training_curves.png`
+- `runs/train/fish_detector/weights/best.pt`
+
+## Configuration Note
+
+The file `data/fish_noaa.yaml` currently contains an absolute `path` value.
+If training fails because of dataset path mismatch, update `path` to match your local workspace location.
+
+## Reproducibility Tips
+
+- Keep generated artifacts in `outputs/` and `runs/`
+- Keep source data in `data/raw/`
+- Pin package versions via `requirements.txt`
+
+## License
+
+Add your project license here (for example: MIT).
