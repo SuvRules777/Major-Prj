@@ -1,7 +1,7 @@
-task: segment
+task: detect
 mode: train
-model: yolov8n-seg.pt
-data: C:\Users\rinku\Fish Biomass Estimation\Major-Prj\data\fish_noaa.yaml
+model: yolov8n.pt
+data: data/fish_noaa.yaml
 epochs: 30
 time: null
 patience: 10
@@ -11,12 +11,12 @@ save: true
 save_period: -1
 cache: false
 device: cpu
-workers: 8
-project: C:\Users\rinku\Fish Biomass Estimation\Major-Prj\runs\train
+workers: 0
+project: runs/train
 name: fish_detector
 exist_ok: true
 pretrained: true
-optimizer: AdamW
+optimizer: auto
 verbose: true
 seed: 0
 deterministic: true
@@ -48,7 +48,7 @@ source: null
 vid_stride: 1
 stream_buffer: false
 visualize: false
-augment: true
+augment: false
 agnostic_nms: false
 classes: null
 retina_masks: false
@@ -71,11 +71,11 @@ simplify: true
 opset: null
 workspace: null
 nms: false
-lr0: 0.001
+lr0: 0.01
 lrf: 0.01
 momentum: 0.937
 weight_decay: 0.0005
-warmup_epochs: 3
+warmup_epochs: 3.0
 warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 box: 7.5
@@ -89,8 +89,8 @@ nbs: 64
 hsv_h: 0.015
 hsv_s: 0.7
 hsv_v: 0.4
-degrees: 15
-translate: 0.2
+degrees: 0.0
+translate: 0.1
 scale: 0.5
 shear: 0.0
 perspective: 0.0
@@ -98,12 +98,12 @@ flipud: 0.0
 fliplr: 0.5
 bgr: 0.0
 mosaic: 1.0
-mixup: 0.1
+mixup: 0.0
 cutmix: 0.0
-copy_paste: 0.1
+copy_paste: 0.0
 copy_paste_mode: flip
 auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: C:\Users\rinku\Fish Biomass Estimation\Major-Prj\runs\train\fish_detector
+save_dir: C:\Users\rinku\Documents\Projects\Major-Prj\runs\train\fish_detector

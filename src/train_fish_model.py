@@ -35,6 +35,8 @@ TEST_IMAGES_DIR = DATA_DIR / "test_images"
 NOAA_FISH_DIR = DATA_DIR / "noaa_fish"
 CONFIG_FILE = DATA_DIR / "fish_noaa.yaml"
 OUTPUT_DIR = project_root / "runs" / "train"
+PRETRAINED_DET_MODEL = project_root / "models" / "weights" / "yolov8n.pt"
+PRETRAINED_SEG_MODEL = project_root / "models" / "weights" / "yolov8n-seg.pt"
 
 
 def create_pseudo_labels(image_dir, output_images_dir, output_labels_dir, model, conf_threshold=0.3):
@@ -175,7 +177,10 @@ def prepare_dataset():
     
     # Load pre-trained model for pseudo-labeling
     print("\nLoading pre-trained model for pseudo-labeling...")
-    model = YOLO('yolov8n.pt')  # Detection model for labeling
+    if PRETRAINED_DET_MODEL.exists():
+        model = YOLO(str(PRETRAINED_DET_MODEL))
+    else:
+        model = YOLO('yolov8n.pt')  # Auto-download fallback
     
     # Temporary directories for initial labeling
     temp_images = NOAA_FISH_DIR / "temp_images"
@@ -244,7 +249,10 @@ def train_fish_model(epochs=50, batch_size=16, img_size=640):
     
     # Load pre-trained YOLOv8 model
     print("\nLoading pre-trained YOLOv8n-seg model...")
-    model = YOLO('yolov8n-seg.pt')
+    if PRETRAINED_SEG_MODEL.exists():
+        model = YOLO(str(PRETRAINED_SEG_MODEL))
+    else:
+        model = YOLO('yolov8n-seg.pt')
     
     # Train the model
     print(f"\nStarting training for {epochs} epochs...")

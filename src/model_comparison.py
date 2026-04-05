@@ -30,6 +30,10 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
+PROJECT_ROOT = Path(dirname(dirname(abspath(__file__))))
+RESULTS_DIR = PROJECT_ROOT / "outputs" / "results"
+VISUALS_DIR = PROJECT_ROOT / "outputs" / "visualizations"
+
 """Data loading and model comparison for fish biomass using local CSV data.
 
 This version does not depend on Hugging Face datasets or image data.
@@ -264,7 +268,8 @@ def plot_comparison_chart(results_df):
                        xytext=(0, 5), textcoords='offset points')
 
     plt.tight_layout()
-    plt.savefig('biomass_model_comparison_metrics.png', dpi=150)
+    VISUALS_DIR.mkdir(parents=True, exist_ok=True)
+    plt.savefig(VISUALS_DIR / 'biomass_model_comparison_metrics.png', dpi=150)
     plt.show()
 
 
@@ -286,7 +291,8 @@ def plot_predictions_vs_actual(labels, preds, model_name):
     plt.ylabel('Predicted Biomass (bbox area)')
     plt.title(f'Predicted vs Actual Biomass - {model_name}')
     plt.grid(True)
-    plt.savefig(f'biomass_predictions_{model_name.lower().replace(" ", "_")}.png', dpi=150)
+    VISUALS_DIR.mkdir(parents=True, exist_ok=True)
+    plt.savefig(VISUALS_DIR / f'biomass_predictions_{model_name.lower().replace(" ", "_")}.png', dpi=150)
     plt.show()
 
 
@@ -301,7 +307,8 @@ def plot_training_history(histories, model_names):
     plt.title('Training Loss Comparison')
     plt.legend()
     plt.grid(True)
-    plt.savefig('biomass_training_curves.png', dpi=150)
+    VISUALS_DIR.mkdir(parents=True, exist_ok=True)
+    plt.savefig(VISUALS_DIR / 'biomass_training_curves.png', dpi=150)
     plt.show()
 
 
@@ -380,8 +387,10 @@ def main():
     print("="*60)
     print(results_df.to_string(index=False))
     
-    results_df.to_csv('biomass_model_comparison_results.csv', index=False)
-    print("\nSaved: biomass_model_comparison_results.csv")
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    comparison_path = RESULTS_DIR / 'model_comparison.csv'
+    results_df.to_csv(comparison_path, index=False)
+    print(f"\nSaved: {comparison_path}")
     
     print("\nGenerating visualizations...")
     plot_comparison_chart(results_df)

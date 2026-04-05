@@ -35,7 +35,7 @@ except ImportError:
 IMAGE_DIR = project_root / "data" / "test_images"
 OUTPUT_DIR = project_root / "outputs" / "results"
 VISUALIZATION_DIR = project_root / "outputs" / "visualizations"
-MODEL_PATH = project_root / "notebooks" / "yolov8n-seg.pt"
+MODEL_PATH = project_root / "models" / "weights" / "yolov8n-seg.pt"
 TRAINED_MODEL_PATH = project_root / "runs" / "train" / "fish_detector" / "weights" / "best.pt"
 
 # Default length-weight parameters (allometric equation: W = a * L^b)
