@@ -248,11 +248,11 @@ def train_fish_model(epochs=50, batch_size=16, img_size=640):
     print(f"Validation images: {val_count}")
     
     # Load pre-trained YOLOv8 model
-    print("\nLoading pre-trained YOLOv8n-seg model...")
-    if PRETRAINED_SEG_MODEL.exists():
-        model = YOLO(str(PRETRAINED_SEG_MODEL))
+    print("\nLoading pre-trained YOLOv8n detector model...")
+    if PRETRAINED_DET_MODEL.exists():
+        model = YOLO(str(PRETRAINED_DET_MODEL))
     else:
-        model = YOLO('yolov8n-seg.pt')
+        model = YOLO('yolov8n.pt')
     
     # Train the model
     print(f"\nStarting training for {epochs} epochs...")
@@ -265,7 +265,7 @@ def train_fish_model(epochs=50, batch_size=16, img_size=640):
         imgsz=img_size,
         patience=10,
         save=True,
-        device='0' if os.environ.get('CUDA_VISIBLE_DEVICES') else 'cpu',
+        device='',  # Auto-select GPU if available, otherwise switch to CPU
         project=str(OUTPUT_DIR),
         name='fish_detector',
         exist_ok=True,
@@ -295,18 +295,18 @@ def train_fish_model(epochs=50, batch_size=16, img_size=640):
 
 
 def validate_model(model_path):
-    """Validate the trained model."""
+    """Evaluate the trained model on exactly the test split."""
     
     print("\n" + "=" * 60)
-    print("VALIDATING FISH DETECTION MODEL")
+    print("TESTING FISH DETECTION MODEL MAP")
     print("=" * 60)
     
     model = YOLO(str(model_path))
     
-    # Run validation
-    metrics = model.val(data=str(CONFIG_FILE))
+    # Run absolute test-set validation
+    metrics = model.val(data=str(CONFIG_FILE), split="test")
     
-    print(f"\nValidation Results:")
+    print(f"\nFinal Test Set Results:")
     print(f"  mAP@0.5: {metrics.box.map50:.4f}")
     print(f"  mAP@0.5:0.95: {metrics.box.map:.4f}")
     print(f"  Precision: {metrics.box.mp:.4f}")
@@ -336,15 +336,15 @@ def main():
     print(f"\nFound {image_count} images in test_images/")
     
     # Prepare dataset
-    print("\n[Step 1/3] Preparing dataset...")
-    if not prepare_dataset():
-        print("Dataset preparation failed.")
-        return
+    print("\n[Step 1/3] Dataset already split via reorganize_dataset.py. Skipping redundant preparation...")
+    # if not prepare_dataset():
+    #     print("Dataset preparation failed.")
+    #     return
     
     # Train model
     print("\n[Step 2/3] Training model...")
     model_path = train_fish_model(
-        epochs=30,  # Reduced for faster training
+        epochs=100,  # Increased for higher accuracy
         batch_size=8,
         img_size=640
     )

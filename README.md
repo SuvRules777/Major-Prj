@@ -106,6 +106,39 @@ What it does:
 - Saves ranking metrics to `outputs/results/model_comparison.csv`
 - Generates plots in `outputs/visualizations`
 
+### 4) Realtime Phone Capture App (MVP)
+
+This project now includes a realtime API + phone camera UI:
+
+- API endpoint: `POST /predict-biomass`
+- Phone UI: browser page at `/` (captures camera frame and sends it to API)
+
+Run it:
+
+```bash
+pip install -r requirements.txt
+python src/realtime_biomass_api.py --host 0.0.0.0 --port 8000
+```
+
+Then:
+
+1. Connect phone and PC to the same network.
+2. Find your PC local IP (for example `192.168.1.10`).
+3. Open `http://<PC_IP>:8000` on phone browser.
+4. Tap **Capture + Estimate** to get fish count + estimated biomass.
+
+Request form fields for `/predict-biomass`:
+
+- `file`: image upload (jpg/png)
+- `conf`: detection confidence threshold (default `0.25`)
+- `pixels_per_cm`: camera calibration (default `10`)
+
+Response includes:
+
+- `fish_count`
+- `total_estimated_biomass_g`
+- per-detection length and weight estimates
+
 ## Main Outputs
 
 - `outputs/results/biomass_estimation_results.csv`

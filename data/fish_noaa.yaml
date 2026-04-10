@@ -1,9 +1,10 @@
 # Fish Detection - YOLO dataset config
 # Fine-tuned for fish detection and biomass estimation
 
-path: C:/Users/rinku/Fish Biomass Estimation/Major-Prj/data/noaa_fish
+path: C:/Users/rinku/Documents/Projects/Major-Prj/data/noaa_fish
 train: images/train
 val: images/val
+test: images/test
 
 nc: 1
 names: ["fish"]
