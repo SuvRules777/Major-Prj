@@ -102,8 +102,8 @@ def startup_event() -> None:
         raise RuntimeError("Failed to load YOLO model. Install ultralytics and verify weights.")
 
 
-@app.get("/")
-def root() -> FileResponse | dict[str, str]:
+@app.get("/", response_model=None)
+def root():
     """Serve phone UI if available."""
     index_file = WEB_DIR / "index.html"
     if index_file.exists():

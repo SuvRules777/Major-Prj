@@ -2,292 +2,463 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fish Biomass Capture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Biomass Estimator AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-1: #021014;
-      --bg-2: #073642;
-      --card: rgba(255, 255, 255, 0.1);
-      --text: #f4fbff;
-      --accent: #00d9c0;
-      --accent-2: #ffc857;
-      --danger: #ff6b6b;
+      --bg-color: #0b0f19;
+      --glass-bg: rgba(18, 25, 43, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --primary: #00f2fe;
+      --secondary: #4facfe;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --danger: #ff4757;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(79, 172, 254, 0.15), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(0, 242, 254, 0.15), transparent 25%);
       min-height: 100vh;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      color: var(--text);
-      background: radial-gradient(circle at 20% 20%, #0d5c63, transparent 45%),
-                  radial-gradient(circle at 85% 15%, #2f4858, transparent 40%),
-                  linear-gradient(135deg, var(--bg-1), var(--bg-2));
-      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
     }
 
-    .container {
-      max-width: 720px;
-      margin: 0 auto;
-      display: grid;
-      gap: 12px;
-    }
-
-    .panel {
-      background: var(--card);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 16px;
-      padding: 12px;
-      backdrop-filter: blur(8px);
-    }
-
-    h1 {
-      margin: 0 0 8px;
-      font-size: 1.5rem;
-      letter-spacing: 0.02em;
-    }
-
-    .muted {
-      margin: 0;
-      opacity: 0.88;
-      font-size: 0.95rem;
-    }
-
-    .video-wrap {
-      position: relative;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: #001d27;
-    }
-
-    video {
+    .app-container {
       width: 100%;
-      display: block;
-      aspect-ratio: 4 / 3;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--secondary), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    .header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 20px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    .viewfinder {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 0 0 1px var(--glass-border);
+    }
+
+    video, canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       object-fit: cover;
+    }
+
+    canvas {
+      z-index: 10;
+      pointer-events: none;
     }
 
     .controls {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
+      gap: 15px;
+      margin-top: 20px;
     }
 
-    .controls label {
-      display: grid;
-      gap: 4px;
-      font-size: 0.9rem;
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     input {
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      padding: 10px;
-      color: var(--text);
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-family: inherit;
       font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
     }
 
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-      flex-wrap: wrap;
+    input:focus {
+      border-color: var(--secondary);
     }
 
-    button {
+    .btn-capture {
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: #0b0f19;
       border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-size: 0.95rem;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      width: 100%;
+      margin-top: 20px;
       cursor: pointer;
-      color: #04212b;
-      background: var(--accent);
-      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 10px 20px -10px var(--primary);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    button.secondary {
-      background: var(--accent-2);
-      color: #2b1b00;
+    .btn-capture:active {
+      transform: scale(0.98);
     }
 
-    button:disabled {
-      opacity: 0.5;
+    .btn-capture:disabled {
+      background: #334155;
+      color: #94a3b8;
+      box-shadow: none;
       cursor: not-allowed;
     }
 
-    .status {
-      min-height: 1.2rem;
-      margin-top: 10px;
+    .status-bar {
+      margin-top: 15px;
+      text-align: center;
       font-size: 0.9rem;
+      font-weight: 500;
+      min-height: 20px;
+      color: var(--secondary);
     }
 
-    .error { color: var(--danger); }
-
-    .result-list {
-      margin: 10px 0 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: 8px;
+    .results-container {
+      display: none;
+      margin-top: 5px;
+      animation: slideUp 0.4s ease-out forwards;
     }
 
-    .result-list li {
-      background: rgba(0, 0, 0, 0.25);
-      border-radius: 10px;
-      padding: 8px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    .result-card {
+      background: rgba(0, 242, 254, 0.05);
+      border: 1px solid rgba(0, 242, 254, 0.2);
+      border-radius: 16px;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
     }
 
-    @media (max-width: 560px) {
-      .controls { grid-template-columns: 1fr; }
-      h1 { font-size: 1.3rem; }
+    .metric {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .metric-value span {
+      font-size: 0.9rem;
+      color: var(--primary);
+      margin-left: 2px;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+
+    .divider {
+      width: 1px;
+      height: 40px;
+      background: var(--glass-border);
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .loading-spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(11, 15, 25, 0.3);
+      border-radius: 50%;
+      border-top-color: #0b0f19;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .switch-cam {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--glass-border);
+      color: white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 20;
+      backdrop-filter: blur(4px);
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <section class="panel">
-      <h1>Fish Biomass Capture</h1>
-      <p class="muted">Open this page on your phone, point at the tank, and tap capture.</p>
-    </section>
 
-    <section class="panel">
-      <div class="video-wrap">
+  <div class="app-container">
+    <div class="header">
+      <h1>Biomass Engine</h1>
+      <p>Point camera at tank. Tap scan to analyze.</p>
+    </div>
+
+    <div class="glass-panel">
+      <div class="viewfinder">
         <video id="camera" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <button class="switch-cam" id="switchBtn">🔄</button>
       </div>
 
       <div class="controls">
-        <label>
-          Confidence (0-1)
-          <input id="conf" type="number" min="0" max="1" step="0.05" value="0.25" />
-        </label>
-        <label>
-          Pixels per cm
-          <input id="pixelsPerCm" type="number" min="1" step="0.1" value="10" />
-        </label>
+        <div class="input-group">
+          <label>Px per cm</label>
+          <input id="pixelsPerCm" type="number" step="0.5" value="10.0" />
+        </div>
+        <div class="input-group">
+          <label>AI Conf Level</label>
+          <input id="conf" type="number" step="0.05" value="0.25" />
+        </div>
       </div>
 
-      <div class="actions">
-        <button id="captureBtn">Capture + Estimate</button>
-        <button class="secondary" id="switchBtn">Switch Camera</button>
-      </div>
+      <button id="captureBtn" class="btn-capture">
+        <span id="btnText">📷 Scan Biomass</span>
+        <div id="spinner" class="loading-spinner"></div>
+      </button>
 
-      <div id="status" class="status"></div>
-    </section>
+      <div id="status" class="status-bar">System Ready</div>
+    </div>
 
-    <section class="panel">
-      <h2 style="margin:0 0 8px;font-size:1.05rem;">Latest Result</h2>
-      <p id="summary" class="muted">No inference yet.</p>
-      <ul id="detections" class="result-list"></ul>
-    </section>
-  </main>
+    <div id="resultsPanel" class="glass-panel results-container">
+      <h3 style="font-size:1rem; color:var(--text-muted); margin-bottom: 5px;">Primary Target Metrics</h3>
+      <div id="detectionsList"></div>
+    </div>
+  </div>
 
-  <canvas id="canvas" style="display:none;"></canvas>
+  <canvas id="snapshotCanvas" style="display:none;"></canvas>
 
   <script>
     const camera = document.getElementById("camera");
-    const canvas = document.getElementById("canvas");
-    const statusEl = document.getElementById("status");
-    const summaryEl = document.getElementById("summary");
-    const detectionsEl = document.getElementById("detections");
+    const overlay = document.getElementById("overlay");
+    const snapshotCanvas = document.getElementById("snapshotCanvas");
     const captureBtn = document.getElementById("captureBtn");
     const switchBtn = document.getElementById("switchBtn");
-    const confInput = document.getElementById("conf");
-    const pixelsPerCmInput = document.getElementById("pixelsPerCm");
-
+    const statusEl = document.getElementById("status");
+    const resultsPanel = document.getElementById("resultsPanel");
+    const detectionsList = document.getElementById("detectionsList");
+    
     let stream;
-    let facingMode = "environment";
+    let currentFacingMode = "environment";
 
-    function setStatus(text, isError = false) {
-      statusEl.textContent = text;
-      statusEl.className = isError ? "status error" : "status";
-    }
-
-    async function startCamera() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-
+    // Setup Video Feed
+    async function initCamera() {
+      if (stream) { stream.getTracks().forEach(t => t.stop()); }
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facingMode } },
-          audio: false,
+          video: { facingMode: { ideal: currentFacingMode } },
+          audio: false
         });
         camera.srcObject = stream;
-        setStatus("Camera ready.");
-      } catch (error) {
-        setStatus("Unable to access camera. Use HTTPS or localhost and allow permissions.", true);
+        
+        // Match canvas to video size once playing
+        camera.onloadedmetadata = () => {
+          overlay.width = camera.videoWidth;
+          overlay.height = camera.videoHeight;
+        };
+        setStatus("Live Feed Active");
+      } catch (err) {
+        setStatus("Camera access denied or unavailable", true);
       }
     }
 
-    async function captureAndEstimate() {
-      if (!camera.videoWidth || !camera.videoHeight) {
-        setStatus("Camera not ready yet.", true);
-        return;
-      }
+    switchBtn.addEventListener("click", () => {
+      currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+      initCamera();
+    });
 
-      captureBtn.disabled = true;
-      setStatus("Sending frame for biomass estimation...");
+    function setStatus(msg, isError=false) {
+      statusEl.textContent = msg;
+      statusEl.style.color = isError ? "var(--danger)" : "var(--secondary)";
+    }
 
-      canvas.width = camera.videoWidth;
-      canvas.height = camera.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+    function toggleLoading(isLoading) {
+      captureBtn.disabled = isLoading;
+      document.getElementById("btnText").style.display = isLoading ? "none" : "block";
+      document.getElementById("spinner").style.display = isLoading ? "block" : "none";
+    }
 
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    captureBtn.addEventListener("click", async () => {
+      if (!camera.videoWidth) return;
+
+      toggleLoading(true);
+      setStatus("Calculating neural geometry...");
+      
+      // Clear previous boxes
+      const ctx = overlay.getContext("2d");
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      // Freeze frame onto hidden canvas for upload
+      snapshotCanvas.width = camera.videoWidth;
+      snapshotCanvas.height = camera.videoHeight;
+      const snapCtx = snapshotCanvas.getContext("2d");
+      snapCtx.drawImage(camera, 0, 0);
+
+      const blob = await new Promise(r => snapshotCanvas.toBlob(r, "image/jpeg", 0.90));
       const form = new FormData();
-      form.append("file", blob, `capture-${Date.now()}.jpg`);
-      form.append("conf", confInput.value);
-      form.append("pixels_per_cm", pixelsPerCmInput.value);
+      form.append("file", blob, "scan.jpg");
+      form.append("conf", document.getElementById("conf").value);
+      form.append("pixels_per_cm", document.getElementById("pixelsPerCm").value);
 
       try {
-        const response = await fetch("/predict-biomass", { method: "POST", body: form });
-        const payload = await response.json();
+        const res = await fetch("/predict-biomass", { method: "POST", body: form });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.detail || "API Error");
 
-        if (!response.ok) {
-          throw new Error(payload.detail || "Inference failed");
-        }
+        // Freeze the video feed visibly to show the snapshot
+        camera.pause();
+        
+        drawBoxes(data.detections);
+        showResults(data);
+        setStatus(`Operation Complete: ${data.fish_count} Object(s) Scanned`);
+        
+        // Resume video after 4 seconds
+        setTimeout(() => {
+          ctx.clearRect(0, 0, overlay.width, overlay.height);
+          camera.play();
+          setStatus("Live Feed Active");
+        }, 4000);
 
-        renderResult(payload);
-        setStatus("Inference complete.");
-      } catch (error) {
-        setStatus(error.message || "Failed to estimate biomass.", true);
+      } catch (err) {
+        setStatus("Inference failed: " + err.message, true);
       } finally {
-        captureBtn.disabled = false;
+        toggleLoading(false);
       }
-    }
+    });
 
-    function renderResult(payload) {
-      summaryEl.textContent = `Fish count: ${payload.fish_count} | Total biomass: ${payload.total_estimated_biomass_g} g`;
-      detectionsEl.innerHTML = "";
+    function drawBoxes(detections) {
+      const ctx = overlay.getContext("2d");
+      // Calculate video aspect ratio scaling vs actual element size
+      // Because object-fit: cover is used, we must map mathematically. For robust simplicity in this demo, 
+      // we assume the coordinates line up with the native videoWidth.
+      
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#00f2fe";
+      ctx.fillStyle = "rgba(0, 242, 254, 0.2)";
+      ctx.font = "bold 16px Inter";
+      
+      detections.forEach((det, idx) => {
+        const [x1, y1, x2, y2] = det.bbox;
+        const width = x2 - x1;
+        const height = y2 - y1;
+        
+        // Draw glow box
+        ctx.shadowColor = "#00f2fe";
+        ctx.shadowBlur = 15;
+        ctx.strokeRect(x1, y1, width, height);
+        ctx.shadowBlur = 0; // Turn off glow for fill
+        ctx.fillRect(x1, y1, width, height);
 
-      if (!payload.detections.length) {
-        const item = document.createElement("li");
-        item.textContent = "No fish detected in this frame.";
-        detectionsEl.appendChild(item);
-        return;
-      }
-
-      payload.detections.forEach(det => {
-        const item = document.createElement("li");
-        item.textContent = `${det.class_name} | conf ${det.confidence} | length ${det.estimated_length_cm} cm | weight ${det.estimated_weight_g} g`;
-        detectionsEl.appendChild(item);
+        // Draw Tag
+        ctx.fillStyle = "#00f2fe";
+        ctx.fillRect(x1, y1 - 25, 140, 25);
+        ctx.fillStyle = "#0b0f19";
+        ctx.fillText(`Target ${idx+1} [${Math.round(det.confidence*100)}%]`, x1 + 5, y1 - 7);
+        ctx.fillStyle = "rgba(0, 242, 254, 0.2)"; // reset
       });
     }
 
-    captureBtn.addEventListener("click", captureAndEstimate);
-    switchBtn.addEventListener("click", async () => {
-      facingMode = facingMode === "environment" ? "user" : "environment";
-      await startCamera();
-    });
+    function showResults(data) {
+      resultsPanel.style.display = "block";
+      detectionsList.innerHTML = "";
+      
+      if (data.fish_count === 0) {
+        detectionsList.innerHTML = `<p style="text-align:center; color:var(--text-muted);">No biological mass detected.</p>`;
+        return;
+      }
 
-    startCamera();
+      data.detections.forEach((det, idx) => {
+        const row = document.createElement("div");
+        row.className = "result-card";
+        row.innerHTML = `
+          <div class="metric">
+            <div class="metric-value">${det.estimated_length_cm.toFixed(1)}<span>cm</span></div>
+            <div class="metric-label">Est. Length</div>
+          </div>
+          <div class="divider"></div>
+          <div class="metric">
+            <div class="metric-value">${det.estimated_weight_g.toFixed(1)}<span>g</span></div>
+            <div class="metric-label">Biomass (W)</div>
+          </div>
+        `;
+        detectionsList.appendChild(row);
+      });
+    }
+
+    initCamera();
   </script>
 </body>
 </html>
