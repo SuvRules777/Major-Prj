@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparative Validation — Ground Truth vs Predicted Weight</title>
+  <meta name="description"
+    content="Comparative validation table between predicted fish biomass (allometric model) and actual ground-truth weights." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-raised: #1c2129;
+      --border: #30363d;
+      --border-light: #21262d;
+      --text: #e6edf3;
+      --text-secondary: #b1bac4;
+      --text-muted: #8b949e;
+      --primary: #58a6ff;
+      --primary-light: rgba(56, 139, 253, 0.15);
+      --primary-dark: #79c0ff;
+      --success: #3fb950;
+      --success-light: rgba(63, 185, 80, 0.15);
+      --warning: #d29922;
+      --warning-light: rgba(210, 153, 34, 0.15);
+      --danger: #f85149;
+      --danger-light: rgba(248, 81, 73, 0.1);
+      --accent: #39d2c0;
+      --accent-light: rgba(57, 210, 192, 0.12);
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.25);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .topbar-logo {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .topbar-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .topbar-sep {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: 1px solid var(--border);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-link {
+      font-size: 0.82rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s;
+    }
+
+    .back-link:hover {
+      color: var(--primary-dark);
+    }
+
+    /* ── Page Content ── */
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 28px 32px 60px;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+      margin-bottom: 28px;
+    }
+
+    .page-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .page-header p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      max-width: 700px;
+    }
+
+    /* ── Metric Cards ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .metric-value.primary {
+      color: var(--primary);
+    }
+
+    .metric-value.success {
+      color: var(--success);
+    }
+
+    .metric-value.accent {
+      color: var(--accent);
+    }
+
+    .metric-value.warning {
+      color: var(--warning);
+    }
+
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Controls Row ── */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .filter-select,
+    .filter-input {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.84rem;
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .filter-select:focus,
+    .filter-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .filter-select {
+      cursor: pointer;
+    }
+
+    .filter-input {
+      width: 180px;
+    }
+
+    .record-count {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* ── Table Container ── */
+    .table-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 620px;
+      overflow-y: auto;
+    }
+
+    /* ── Table ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .data-table thead th {
+      padding: 12px 14px;
+      background: var(--surface-raised);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      border-bottom: 2px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .data-table thead th:hover {
+      background: var(--border-light);
+    }
+
+    .data-table thead th.sorted-asc::after {
+      content: " ▲";
+      font-size: 0.65rem;
+      color: var(--primary);
+    }
+
+    .data-table thead th.sorted-desc::after {
+      content: " ▼";
+      font-size: 0.65rem;
+      color: var(--primary);
+    }
+
+    .data-table thead th:nth-child(3),
+    .data-table thead th:nth-child(4),
+    .data-table thead th:nth-child(5),
+    .data-table thead th:nth-child(6),
+    .data-table thead th:nth-child(7) {
+      text-align: right;
+    }
+
+    .data-table tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-light);
+      transition: background 0.1s;
+    }
+
+    .data-table tbody tr:hover td {
+      background: rgba(56, 139, 253, 0.04);
+    }
+
+    .data-table tbody td:first-child {
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+    }
+
+    .data-table tbody td:nth-child(3),
+    .data-table tbody td:nth-child(4),
+    .data-table tbody td:nth-child(5),
+    .data-table tbody td:nth-child(6),
+    .data-table tbody td:nth-child(7) {
+      text-align: right;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    /* Species badge */
+    .species-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .species-Bream {
+      background: rgba(56, 139, 253, 0.15);
+      color: #58a6ff;
+    }
+
+    .species-Roach {
+      background: rgba(210, 153, 34, 0.15);
+      color: #d29922;
+    }
+
+    .species-Whitefish {
+      background: rgba(139, 148, 158, 0.18);
+      color: #b1bac4;
+    }
+
+    .species-Parkki {
+      background: rgba(163, 113, 247, 0.15);
+      color: #a371f7;
+    }
+
+    .species-Perch {
+      background: rgba(63, 185, 80, 0.15);
+      color: #3fb950;
+    }
+
+    .species-Pike {
+      background: rgba(57, 210, 192, 0.12);
+      color: #39d2c0;
+    }
+
+    .species-Smelt {
+      background: rgba(219, 97, 162, 0.15);
+      color: #db61a2;
+    }
+
+    /* Error color coding */
+    .err-low {
+      color: var(--success);
+    }
+
+    .err-mid {
+      color: var(--warning);
+    }
+
+    .err-high {
+      color: var(--danger);
+    }
+
+    .err-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .err-badge.low {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    .err-badge.mid {
+      background: var(--warning-light);
+      color: var(--warning);
+    }
+
+    .err-badge.high {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    /* ── Accuracy bar (visual indicator) ── */
+    .accuracy-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .acc-bar-bg {
+      width: 60px;
+      height: 6px;
+      background: var(--border-light);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .acc-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Methodology ── */
+    .methodology {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .methodology strong {
+      color: var(--text-secondary);
+    }
+
+    .methodology code {
+      font-family: 'IBM Plex Mono', monospace;
+      background: var(--bg);
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      font-size: 0.75rem;
+    }
+
+    /* ── Loading ── */
+    .loading-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-muted);
+    }
+
+    .loading-state .spin {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: rotate 0.7s linear infinite;
+      margin-bottom: 14px;
+    }
+
+    @keyframes rotate {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.35s ease-out forwards;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+
+      .topbar {
+        padding: 0 16px;
+      }
+
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .record-count {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">🐟</div>
+      <span class="topbar-title">Fish Biomass Estimation System</span>
+      <span class="topbar-sep">Comparative Validation</span>
+    </div>
+    <div class="topbar-right">
+      <a href="/" class="back-link">← Back to Inference</a>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header fade-in">
+      <h1>Ground Truth vs Predicted Weight</h1>
+      <p>Side-by-side comparison of actual measured weights against weights predicted by the
+        allometric model <code>W = a × L<sup>b</sup></code>, validated across the entire dataset.</p>
+    </div>
+
+    <!-- Metrics -->
+    <div class="metrics-grid fade-in" id="metricsGrid" style="animation-delay:0.05s">
+      <div class="metric-card">
+        <div class="metric-label">Samples</div>
+        <div class="metric-value primary" id="mSamples">—</div>
+        <div class="metric-sub" id="mSpeciesCount"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">R² Score</div>
+        <div class="metric-value success" id="mR2">—</div>
+        <div class="metric-sub">Coefficient of Determination</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">MAPE</div>
+        <div class="metric-value accent" id="mMape">—</div>
+        <div class="metric-sub">Mean Absolute % Error</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">MAE</div>
+        <div class="metric-value primary" id="mMae">—</div>
+        <div class="metric-sub">Mean Absolute Error</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">RMSE</div>
+        <div class="metric-value primary" id="mRmse">—</div>
+        <div class="metric-sub">Root Mean Squared Error</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Accuracy</div>
+        <div class="metric-value success" id="mAccuracy">—</div>
+        <div class="metric-sub">100% − MAPE</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Max Error</div>
+        <div class="metric-value warning" id="mMaxErr">—</div>
+        <div class="metric-sub">Worst single deviation</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-row fade-in" style="animation-delay:0.1s">
+      <div class="filter-group">
+        <label for="speciesFilter">Species</label>
+        <select class="filter-select" id="speciesFilter">
+          <option value="all">All Species</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="sortSelect">Sort By</label>
+        <select class="filter-select" id="sortSelect">
+          <option value="index">Sample #</option>
+          <option value="species">Species</option>
+          <option value="actual_weight">Actual Weight</option>
+          <option value="predicted_weight">Predicted Weight</option>
+          <option value="absolute_error">Absolute Error</option>
+          <option value="percentage_error">% Error</option>
+          <option value="accuracy">Accuracy</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="sortDir">Order</label>
+        <select class="filter-select" id="sortDir">
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+      </div>
+      <span class="record-count" id="recordCount"></span>
+    </div>
+
+    <!-- Table -->
+    <div class="table-panel fade-in" style="animation-delay:0.15s">
+      <div class="table-scroll">
+        <table class="data-table" id="dataTable">
+          <thead>
+            <tr>
+              <th data-col="index">#</th>
+              <th data-col="species">Species</th>
+              <th data-col="actual_weight">Actual Weight (g)</th>
+              <th data-col="predicted_weight">Predicted Weight (g)</th>
+              <th data-col="length_cm">Length (cm)</th>
+              <th data-col="absolute_error">Abs. Error (g)</th>
+              <th data-col="percentage_error">% Error</th>
+              <th data-col="accuracy">Accuracy</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="8">
+                <div class="loading-state">
+                  <div class="spin"></div>
+                  <p>Loading validation data...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Methodology -->
+    <div class="methodology fade-in" style="animation-delay:0.2s">
+      <strong>Validation Methodology:</strong> Ground-truth weights are sourced from
+      <code>fish_measurements.csv</code> containing verified lab measurements for 7 species. Predicted weights
+      are computed using the standard allometric length–weight equation
+      <code>W = a × L<sup>b</sup></code>, where species-specific coefficients <code>a</code> and <code>b</code>
+      were fitted via least-squares regression on the training split. Accuracy is defined as
+      <code>100% − |Percentage Error|</code> per sample. The overall model accuracy (100% − MAPE) quantifies the
+      average predictive performance across all validation samples.
+    </div>
+
+  </div>
+
+  <script>
+    let allSamples = [];
+
+    // ── Fetch Data ──
+    async function loadData() {
+      try {
+        const res = await fetch("/api/validation-data");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Server error");
+
+        populateMetrics(data.summary);
+        allSamples = data.samples.map((s, i) => ({ ...s, index: i + 1 }));
+        populateSpeciesFilter(allSamples);
+        renderTable(allSamples);
+      } catch (err) {
+        document.getElementById("tableBody").innerHTML = `
+          <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--danger);">
+            Error loading data: ${err.message}
+          </td></tr>`;
+      }
+    }
+
+    // ── Metrics Cards ──
+    function populateMetrics(s) {
+      document.getElementById("mSamples").textContent = s.n_samples;
+      document.getElementById("mSpeciesCount").textContent = s.n_species + " species";
+      document.getElementById("mR2").textContent = s.r2.toFixed(4);
+      document.getElementById("mMape").textContent = s.mape.toFixed(2) + "%";
+      document.getElementById("mMae").textContent = s.mae.toFixed(2) + " g";
+      document.getElementById("mRmse").textContent = s.rmse.toFixed(2) + " g";
+      document.getElementById("mAccuracy").textContent = (100 - s.mape).toFixed(2) + "%";
+      document.getElementById("mMaxErr").textContent = s.max_error.toFixed(2) + " g";
+    }
+
+    // ── Species Filter ──
+    function populateSpeciesFilter(samples) {
+      const species = [...new Set(samples.map(s => s.species))].sort();
+      const sel = document.getElementById("speciesFilter");
+      species.forEach(sp => {
+        const opt = document.createElement("option");
+        opt.value = sp;
+        opt.textContent = sp;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ── Render Table ──
+    function renderTable(samples) {
+      const tbody = document.getElementById("tableBody");
+      if (samples.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">No matching records.</td></tr>`;
+        document.getElementById("recordCount").textContent = "0 records";
+        return;
+      }
+
+      document.getElementById("recordCount").textContent = samples.length + " records";
+
+      tbody.innerHTML = samples.map(s => {
+        const accuracy = Math.max(0, 100 - s.percentage_error);
+        const errClass = s.percentage_error <= 5 ? "low" : s.percentage_error <= 15 ? "mid" : "high";
+        const accColor = accuracy >= 95 ? "var(--success)" : accuracy >= 85 ? "var(--warning)" : "var(--danger)";
+
+        return `<tr>
+          <td>${s.index}</td>
+          <td><span class="species-badge species-${s.species}">${s.species}</span></td>
+          <td style="font-weight:600">${s.actual_weight.toFixed(2)}</td>
+          <td>${s.predicted_weight.toFixed(2)}</td>
+          <td>${s.length_cm.toFixed(2)}</td>
+          <td>${s.absolute_error.toFixed(2)}</td>
+          <td><span class="err-badge ${errClass}">${s.percentage_error.toFixed(1)}%</span></td>
+          <td>
+            <div class="accuracy-cell">
+              <div class="acc-bar-bg">
+                <div class="acc-bar-fill" style="width:${accuracy}%;background:${accColor}"></div>
+              </div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;font-weight:600;color:${accColor}">${accuracy.toFixed(1)}%</span>
+            </div>
+          </td>
+        </tr>`;
+      }).join("");
+    }
+
+    // ── Filtering & Sorting ──
+    function getFilteredSorted() {
+      const species = document.getElementById("speciesFilter").value;
+      const sortBy = document.getElementById("sortSelect").value;
+      const sortDir = document.getElementById("sortDir").value;
+
+      let filtered = allSamples;
+      if (species !== "all") {
+        filtered = filtered.filter(s => s.species === species);
+      }
+
+      filtered = [...filtered].sort((a, b) => {
+        let va, vb;
+        if (sortBy === "species") {
+          va = a.species;
+          vb = b.species;
+          return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+        }
+        if (sortBy === "accuracy") {
+          va = 100 - a.percentage_error;
+          vb = 100 - b.percentage_error;
+        } else {
+          va = a[sortBy];
+          vb = b[sortBy];
+        }
+        return sortDir === "asc" ? va - vb : vb - va;
+      });
+
+      renderTable(filtered);
+    }
+
+    document.getElementById("speciesFilter").addEventListener("change", getFilteredSorted);
+    document.getElementById("sortSelect").addEventListener("change", getFilteredSorted);
+    document.getElementById("sortDir").addEventListener("change", getFilteredSorted);
+
+    // ── Column header click sorting ──
+    document.querySelectorAll(".data-table thead th[data-col]").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        const sortSel = document.getElementById("sortSelect");
+        const dirSel = document.getElementById("sortDir");
+
+        if (sortSel.value === col) {
+          dirSel.value = dirSel.value === "asc" ? "desc" : "asc";
+        } else {
+          sortSel.value = col;
+          dirSel.value = "asc";
+        }
+        getFilteredSorted();
+
+        document.querySelectorAll(".data-table thead th").forEach(t => t.classList.remove("sorted-asc", "sorted-desc"));
+        th.classList.add(dirSel.value === "asc" ? "sorted-asc" : "sorted-desc");
+      });
+    });
+
+    // ── Init ──
+    loadData();
+  </script>
+</body>
+
+</html>

@@ -111,6 +111,64 @@ def root():
     return {"message": "API running. Open /docs for Swagger UI."}
 
 
+@app.get("/validation", response_model=None)
+def validation_page():
+    """Serve the comparative validation table page."""
+    val_file = WEB_DIR / "validation.html"
+    if val_file.exists():
+        return FileResponse(val_file)
+    return {"message": "validation.html not found in web directory."}
+
+
+@app.get("/api/validation-data")
+def validation_data() -> dict[str, Any]:
+    """Return ground-truth vs predicted weight comparison data as JSON."""
+    csv_path = PROJECT_ROOT / "data" / "processed" / "fish_data_with_predictions.csv"
+    if not csv_path.exists():
+        raise HTTPException(status_code=404, detail="Validation CSV not found")
+
+    import pandas as pd
+
+    df = pd.read_csv(csv_path)
+    df = df[df["Weight"] > 0].copy()
+
+    df["Absolute_Error"] = (df["Weight"] - df["Predicted_Weight"]).abs()
+    df["Percentage_Error"] = df["Absolute_Error"] / df["Weight"] * 100
+
+    samples = []
+    for _, row in df.iterrows():
+        samples.append({
+            "species": row["Species"],
+            "actual_weight": round(float(row["Weight"]), 2),
+            "predicted_weight": round(float(row["Predicted_Weight"]), 2),
+            "length_cm": round(float(row["Length"]), 2),
+            "absolute_error": round(float(row["Absolute_Error"]), 2),
+            "percentage_error": round(float(row["Percentage_Error"]), 2),
+        })
+
+    actual = df["Weight"].values
+    predicted = df["Predicted_Weight"].values
+    errors = actual - predicted
+    abs_errors = np.abs(errors)
+    pct_errors = df["Percentage_Error"].values
+
+    ss_res = float(np.sum(errors ** 2))
+    ss_tot = float(np.sum((actual - np.mean(actual)) ** 2))
+    r2 = 1 - ss_res / ss_tot if ss_tot != 0 else 0.0
+
+    summary = {
+        "n_samples": len(df),
+        "n_species": int(df["Species"].nunique()),
+        "mae": round(float(np.mean(abs_errors)), 3),
+        "rmse": round(float(np.sqrt(np.mean(errors ** 2))), 3),
+        "mape": round(float(np.mean(pct_errors)), 2),
+        "r2": round(r2, 4),
+        "max_error": round(float(np.max(abs_errors)), 3),
+    }
+
+    return {"summary": summary, "samples": samples}
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "model": "loaded" if MODEL is not None else "not_loaded"}
