@@ -2,463 +2,840 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Biomass Estimator AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fish Biomass Estimation System — YOLOv8 Deep Learning</title>
+  <meta name="description" content="Automated fish biomass estimation using YOLOv8 object detection and allometric length-weight regression." />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #0b0f19;
-      --glass-bg: rgba(18, 25, 43, 0.65);
-      --glass-border: rgba(255, 255, 255, 0.08);
-      --primary: #00f2fe;
-      --secondary: #4facfe;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --danger: #ff4757;
+      --bg: #0d1117;
+      --white: #161b22;
+      --surface: #161b22;
+      --border: #30363d;
+      --border-light: #21262d;
+      --text: #e6edf3;
+      --text-secondary: #b1bac4;
+      --text-muted: #8b949e;
+      --primary: #58a6ff;
+      --primary-light: rgba(56, 139, 253, 0.15);
+      --primary-dark: #79c0ff;
+      --success: #3fb950;
+      --success-light: rgba(63, 185, 80, 0.15);
+      --warning: #d29922;
+      --warning-light: rgba(210, 153, 34, 0.15);
+      --accent: #39d2c0;
+      --radius: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.25);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      background-image: 
-        radial-gradient(circle at 15% 50%, rgba(79, 172, 254, 0.15), transparent 25%),
-        radial-gradient(circle at 85% 30%, rgba(0, 242, 254, 0.15), transparent 25%);
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      padding: 20px;
-      overflow-x: hidden;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
     }
 
-    .app-container {
-      width: 100%;
-      max-width: 480px;
+    .topbar-left {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
+      align-items: center;
+      gap: 12px;
     }
 
-    .header {
-      text-align: center;
-      margin-bottom: 5px;
-    }
-
-    .header h1 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      background: linear-gradient(90deg, var(--secondary), var(--primary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 6px;
-    }
-
-    .header p {
-      color: var(--text-muted);
+    .topbar-logo {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
       font-size: 0.9rem;
     }
 
-    .glass-panel {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      padding: 20px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    .topbar-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
     }
 
-    .viewfinder {
+    .topbar-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 8px;
+      padding-left: 8px;
+      border-left: 1px solid var(--border);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .model-tag {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.75rem;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 32px;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; padding: 16px; }
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-header h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-secondary);
+    }
+
+    .panel-body {
+      padding: 20px;
+    }
+
+    /* ── Upload Area ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg);
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .upload-zone svg {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 12px;
+      display: block;
+      color: var(--text-muted);
+    }
+
+    .upload-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .upload-hint {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .upload-hint a {
+      color: var(--primary);
+      font-weight: 500;
+      text-decoration: none;
+    }
+
+    /* ── Preview ── */
+    .preview-container {
+      display: none;
       position: relative;
-      width: 100%;
-      aspect-ratio: 4/3;
-      border-radius: 16px;
+      border-radius: 6px;
       overflow: hidden;
       background: #000;
-      box-shadow: 0 0 0 1px var(--glass-border);
+      border: 1px solid var(--border);
     }
 
-    video, canvas {
+    .preview-container img {
+      width: 100%;
+      display: block;
+    }
+
+    .preview-container canvas {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-    }
-
-    canvas {
-      z-index: 10;
       pointer-events: none;
     }
 
-    .controls {
+    .preview-filename {
+      display: none;
+      padding: 8px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      margin-top: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+    }
+
+    /* ── Parameter Grid ── */
+    .params-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-top: 20px;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
     }
 
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .input-group label {
-      font-size: 0.8rem;
-      font-weight: 500;
+    .param-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
+      margin-bottom: 5px;
     }
 
-    input {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--glass-border);
-      color: var(--text-main);
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-family: inherit;
-      font-size: 1rem;
+    .param-group input {
+      width: 100%;
+      padding: 8px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.88rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--text);
       outline: none;
       transition: border-color 0.2s;
     }
 
-    input:focus {
-      border-color: var(--secondary);
+    .param-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
     }
 
-    .btn-capture {
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
-      color: #0b0f19;
-      border: none;
-      border-radius: 14px;
-      padding: 16px;
-      font-size: 1.1rem;
-      font-weight: 700;
-      width: 100%;
-      margin-top: 20px;
-      cursor: pointer;
-      display: flex;
+    /* ── Actions ── */
+    .actions-row {
+      display: none;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
-      box-shadow: 0 10px 20px -10px var(--primary);
-      transition: transform 0.2s, box-shadow 0.2s;
+      gap: 6px;
+      padding: 10px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      font-family: inherit;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex: 1;
     }
 
-    .btn-capture:active {
-      transform: scale(0.98);
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #0d1117;
     }
 
-    .btn-capture:disabled {
-      background: #334155;
-      color: #94a3b8;
-      box-shadow: none;
-      cursor: not-allowed;
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+
+    .btn-outline {
+      background: var(--bg);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
     }
 
-    .status-bar {
-      margin-top: 15px;
-      text-align: center;
-      font-size: 0.9rem;
+    .btn-outline:hover { background: var(--bg); }
+
+    /* ── Status ── */
+    .status-msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.82rem;
       font-weight: 500;
-      min-height: 20px;
-      color: var(--secondary);
-    }
-
-    .results-container {
       display: none;
-      margin-top: 5px;
-      animation: slideUp 0.4s ease-out forwards;
-    }
-
-    .result-card {
-      background: rgba(0, 242, 254, 0.05);
-      border: 1px solid rgba(0, 242, 254, 0.2);
-      border-radius: 16px;
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-top: 10px;
+      gap: 8px;
     }
 
-    .metric {
+    .status-msg.loading {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .metric-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .metric-value span {
-      font-size: 0.9rem;
+      background: var(--primary-light);
       color: var(--primary);
-      margin-left: 2px;
+      border: 1px solid rgba(56, 139, 253, 0.3);
     }
 
-    .metric-label {
-      font-size: 0.75rem;
+    .status-msg.done {
+      display: flex;
+      background: var(--success-light);
+      color: var(--success);
+      border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    .status-msg.fail {
+      display: flex;
+      background: rgba(248, 81, 73, 0.1);
+      color: #f85149;
+      border: 1px solid rgba(248, 81, 73, 0.3);
+    }
+
+    .spin {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--primary-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: rotate 0.7s linear infinite;
+    }
+
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    /* ── Results: Empty ── */
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      color: var(--border);
+      margin-bottom: 14px;
+    }
+
+    .empty-state p {
+      font-size: 0.88rem;
       color: var(--text-muted);
+    }
+
+    /* ── Results: Populated ── */
+    .results-body { display: none; }
+
+    /* ── Summary Table ── */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    .summary-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--bg);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 4px;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
     }
 
-    .divider {
-      width: 1px;
-      height: 40px;
-      background: var(--glass-border);
+    .summary-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-light);
     }
 
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(10px); }
+    .summary-table td:last-child {
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .val-highlight {
+      color: var(--primary);
+    }
+
+    .val-success {
+      color: var(--success);
+    }
+
+    /* ── Detection Table ── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border-light);
+      padding-top: 14px;
+    }
+
+    .det-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .det-table thead th {
+      text-align: left;
+      padding: 7px 10px;
+      background: var(--bg);
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .det-table thead th:last-child,
+    .det-table tbody td:last-child {
+      text-align: right;
+    }
+
+    .det-table tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--border-light);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.82rem;
+    }
+
+    .det-table tbody td:first-child {
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .det-table tbody tr:hover {
+      background: var(--border-light);
+    }
+
+    .conf-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .conf-high { background: var(--success-light); color: var(--success); }
+    .conf-mid { background: var(--warning-light); color: var(--warning); }
+    .conf-low { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+
+    /* ── Methodology Footer ── */
+    .methodology {
+      margin-top: 20px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    .methodology strong {
+      color: var(--text-secondary);
+    }
+
+    .methodology code {
+      font-family: 'IBM Plex Mono', monospace;
+      background: var(--surface);
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      font-size: 0.75rem;
+    }
+
+    /* ── Animation ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
-    .loading-spinner {
-      display: none;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(11, 15, 25, 0.3);
-      border-radius: 50%;
-      border-top-color: #0b0f19;
-      animation: spin 1s ease-in-out infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    .switch-cam {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid var(--glass-border);
-      color: white;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 20;
-      backdrop-filter: blur(4px);
-    }
+    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
   </style>
 </head>
 <body>
 
-  <div class="app-container">
-    <div class="header">
-      <h1>Biomass Engine</h1>
-      <p>Point camera at tank. Tap scan to analyze.</p>
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">🐟</div>
+      <span class="topbar-title">Fish Biomass Estimation System</span>
+      <span class="topbar-subtitle">Computer Vision & Deep Learning</span>
     </div>
+    <div class="topbar-right">
+      <span class="model-tag">YOLOv8n · mAP@50: 94.9%</span>
+      <span class="status-indicator">
+        <span class="status-dot"></span>
+        Model Active
+      </span>
+    </div>
+  </header>
 
-    <div class="glass-panel">
-      <div class="viewfinder">
-        <video id="camera" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <button class="switch-cam" id="switchBtn">🔄</button>
+  <!-- Main Layout -->
+  <main class="layout">
+
+    <!-- Left Column: Input -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Image Input</h2>
+        </div>
+        <div class="panel-body">
+
+          <div class="upload-zone" id="uploadZone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 16V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <div class="upload-title">Upload specimen image</div>
+            <div class="upload-hint">Drag and drop or <a href="#">browse files</a> · JPG, PNG</div>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" hidden />
+
+          <div class="preview-container" id="previewContainer">
+            <img id="previewImg" alt="Specimen preview" />
+            <canvas id="overlayCanvas"></canvas>
+          </div>
+          <div class="preview-filename" id="previewFilename"></div>
+
+          <div class="actions-row" id="actionsRow">
+            <button class="btn btn-primary" id="analyzeBtn">Run Inference</button>
+            <button class="btn btn-outline" id="clearBtn">Clear</button>
+          </div>
+
+          <div class="params-grid">
+            <div class="param-group">
+              <label>Confidence Threshold</label>
+              <input id="confInput" type="number" min="0" max="1" step="0.05" value="0.25" />
+            </div>
+            <div class="param-group">
+              <label>Scale (px/cm)</label>
+              <input id="pxInput" type="number" min="1" step="0.5" value="10" />
+            </div>
+          </div>
+
+          <div class="status-msg" id="statusMsg">
+            <span class="spin" id="statusSpin"></span>
+            <span id="statusText"></span>
+          </div>
+        </div>
       </div>
 
-      <div class="controls">
-        <div class="input-group">
-          <label>Px per cm</label>
-          <input id="pixelsPerCm" type="number" step="0.5" value="10.0" />
-        </div>
-        <div class="input-group">
-          <label>AI Conf Level</label>
-          <input id="conf" type="number" step="0.05" value="0.25" />
-        </div>
+      <!-- Methodology Note -->
+      <div class="methodology" style="margin-top: 20px;">
+        <strong>Methodology:</strong> This system uses a YOLOv8n object detection model trained on 1,445 annotated fish images
+        (80/10/10 train-val-test split). Fish length is estimated from bounding box pixel dimensions scaled via the
+        <code>px/cm</code> parameter. Biomass is computed using the standard allometric equation
+        <code>W = a × L<sup>b</sup></code> where <code>a = 0.01</code>, <code>b = 3.0</code>.
+        Final test set performance: <strong>Precision 93.8%</strong>, <strong>Recall 94.4%</strong>,
+        <strong>mAP@50 94.9%</strong>.
       </div>
-
-      <button id="captureBtn" class="btn-capture">
-        <span id="btnText">📷 Scan Biomass</span>
-        <div id="spinner" class="loading-spinner"></div>
-      </button>
-
-      <div id="status" class="status-bar">System Ready</div>
     </div>
 
-    <div id="resultsPanel" class="glass-panel results-container">
-      <h3 style="font-size:1rem; color:var(--text-muted); margin-bottom: 5px;">Primary Target Metrics</h3>
-      <div id="detectionsList"></div>
-    </div>
-  </div>
+    <!-- Right Column: Results -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Estimation Output</h2>
+        <span id="resultTimestamp" style="font-size:0.72rem; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;"></span>
+      </div>
+      <div class="panel-body">
 
-  <canvas id="snapshotCanvas" style="display:none;"></canvas>
+        <div class="empty-state" id="emptyState">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p>No results yet.<br/>Upload an image and run inference to begin.</p>
+        </div>
+
+        <div class="results-body" id="resultsBody">
+          <!-- Summary -->
+          <table class="summary-table" id="summaryTable">
+            <thead><tr><th colspan="2">Summary</th></tr></thead>
+            <tbody id="summaryRows"></tbody>
+          </table>
+
+          <!-- Per-detection table -->
+          <div class="section-label">Individual Detections</div>
+          <table class="det-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Class</th>
+                <th>Conf.</th>
+                <th>Length (cm)</th>
+                <th>Biomass (g)</th>
+              </tr>
+            </thead>
+            <tbody id="detRows"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
 
   <script>
-    const camera = document.getElementById("camera");
-    const overlay = document.getElementById("overlay");
-    const snapshotCanvas = document.getElementById("snapshotCanvas");
-    const captureBtn = document.getElementById("captureBtn");
-    const switchBtn = document.getElementById("switchBtn");
-    const statusEl = document.getElementById("status");
-    const resultsPanel = document.getElementById("resultsPanel");
-    const detectionsList = document.getElementById("detectionsList");
-    
-    let stream;
-    let currentFacingMode = "environment";
+    // ── DOM ──
+    const uploadZone = document.getElementById("uploadZone");
+    const fileInput = document.getElementById("fileInput");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewImg = document.getElementById("previewImg");
+    const overlayCanvas = document.getElementById("overlayCanvas");
+    const previewFilename = document.getElementById("previewFilename");
+    const actionsRow = document.getElementById("actionsRow");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const statusMsg = document.getElementById("statusMsg");
+    const statusSpin = document.getElementById("statusSpin");
+    const statusText = document.getElementById("statusText");
+    const emptyState = document.getElementById("emptyState");
+    const resultsBody = document.getElementById("resultsBody");
+    const summaryRows = document.getElementById("summaryRows");
+    const detRows = document.getElementById("detRows");
+    const resultTimestamp = document.getElementById("resultTimestamp");
+    const confInput = document.getElementById("confInput");
+    const pxInput = document.getElementById("pxInput");
 
-    // Setup Video Feed
-    async function initCamera() {
-      if (stream) { stream.getTracks().forEach(t => t.stop()); }
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: currentFacingMode } },
-          audio: false
-        });
-        camera.srcObject = stream;
-        
-        // Match canvas to video size once playing
-        camera.onloadedmetadata = () => {
-          overlay.width = camera.videoWidth;
-          overlay.height = camera.videoHeight;
+    let currentFile = null;
+
+    // ── Upload ──
+    uploadZone.addEventListener("click", () => fileInput.click());
+    uploadZone.addEventListener("dragover", (e) => { e.preventDefault(); uploadZone.classList.add("drag-over"); });
+    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag-over"));
+    uploadZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove("drag-over");
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+    function handleFile(file) {
+      if (!file.type.startsWith("image/")) { setStatus("Invalid file type. Please upload an image.", "fail"); return; }
+      currentFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        previewImg.src = e.target.result;
+        previewImg.onload = () => {
+          const ctx = overlayCanvas.getContext("2d");
+          overlayCanvas.width = previewImg.naturalWidth;
+          overlayCanvas.height = previewImg.naturalHeight;
+          ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         };
-        setStatus("Live Feed Active");
-      } catch (err) {
-        setStatus("Camera access denied or unavailable", true);
-      }
+      };
+      reader.readAsDataURL(file);
+
+      uploadZone.style.display = "none";
+      previewContainer.style.display = "block";
+      previewFilename.style.display = "block";
+      previewFilename.textContent = "📎 " + file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
+      actionsRow.style.display = "flex";
+      hideStatus();
     }
 
-    switchBtn.addEventListener("click", () => {
-      currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
-      initCamera();
+    // ── Clear ──
+    clearBtn.addEventListener("click", () => {
+      currentFile = null;
+      fileInput.value = "";
+      previewContainer.style.display = "none";
+      previewFilename.style.display = "none";
+      actionsRow.style.display = "none";
+      uploadZone.style.display = "block";
+      resultsBody.style.display = "none";
+      emptyState.style.display = "block";
+      resultTimestamp.textContent = "";
+      hideStatus();
     });
 
-    function setStatus(msg, isError=false) {
-      statusEl.textContent = msg;
-      statusEl.style.color = isError ? "var(--danger)" : "var(--secondary)";
-    }
+    // ── Run Inference ──
+    analyzeBtn.addEventListener("click", async () => {
+      if (!currentFile) return;
+      analyzeBtn.disabled = true;
+      setStatus("Running YOLOv8 inference...", "loading");
 
-    function toggleLoading(isLoading) {
-      captureBtn.disabled = isLoading;
-      document.getElementById("btnText").style.display = isLoading ? "none" : "block";
-      document.getElementById("spinner").style.display = isLoading ? "block" : "none";
-    }
-
-    captureBtn.addEventListener("click", async () => {
-      if (!camera.videoWidth) return;
-
-      toggleLoading(true);
-      setStatus("Calculating neural geometry...");
-      
-      // Clear previous boxes
-      const ctx = overlay.getContext("2d");
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-
-      // Freeze frame onto hidden canvas for upload
-      snapshotCanvas.width = camera.videoWidth;
-      snapshotCanvas.height = camera.videoHeight;
-      const snapCtx = snapshotCanvas.getContext("2d");
-      snapCtx.drawImage(camera, 0, 0);
-
-      const blob = await new Promise(r => snapshotCanvas.toBlob(r, "image/jpeg", 0.90));
-      const form = new FormData();
-      form.append("file", blob, "scan.jpg");
-      form.append("conf", document.getElementById("conf").value);
-      form.append("pixels_per_cm", document.getElementById("pixelsPerCm").value);
+      const formData = new FormData();
+      formData.append("file", currentFile);
+      formData.append("conf", confInput.value);
+      formData.append("pixels_per_cm", pxInput.value);
 
       try {
-        const res = await fetch("/predict-biomass", { method: "POST", body: form });
+        const res = await fetch("/predict-biomass", { method: "POST", body: formData });
         const data = await res.json();
-        
-        if (!res.ok) throw new Error(data.detail || "API Error");
-
-        // Freeze the video feed visibly to show the snapshot
-        camera.pause();
-        
-        drawBoxes(data.detections);
-        showResults(data);
-        setStatus(`Operation Complete: ${data.fish_count} Object(s) Scanned`);
-        
-        // Resume video after 4 seconds
-        setTimeout(() => {
-          ctx.clearRect(0, 0, overlay.width, overlay.height);
-          camera.play();
-          setStatus("Live Feed Active");
-        }, 4000);
-
+        if (!res.ok) throw new Error(data.detail || "Server error");
+        drawBoundingBoxes(data.detections);
+        renderResults(data);
+        setStatus("Inference completed successfully. " + data.fish_count + " specimen(s) detected.", "done");
       } catch (err) {
-        setStatus("Inference failed: " + err.message, true);
+        setStatus("Inference error: " + err.message, "fail");
       } finally {
-        toggleLoading(false);
+        analyzeBtn.disabled = false;
       }
     });
 
-    function drawBoxes(detections) {
-      const ctx = overlay.getContext("2d");
-      // Calculate video aspect ratio scaling vs actual element size
-      // Because object-fit: cover is used, we must map mathematically. For robust simplicity in this demo, 
-      // we assume the coordinates line up with the native videoWidth.
-      
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#00f2fe";
-      ctx.fillStyle = "rgba(0, 242, 254, 0.2)";
-      ctx.font = "bold 16px Inter";
-      
-      detections.forEach((det, idx) => {
-        const [x1, y1, x2, y2] = det.bbox;
-        const width = x2 - x1;
-        const height = y2 - y1;
-        
-        // Draw glow box
-        ctx.shadowColor = "#00f2fe";
-        ctx.shadowBlur = 15;
-        ctx.strokeRect(x1, y1, width, height);
-        ctx.shadowBlur = 0; // Turn off glow for fill
-        ctx.fillRect(x1, y1, width, height);
+    // ── Draw Boxes ──
+    function drawBoundingBoxes(detections) {
+      try {
+        const ctx = overlayCanvas.getContext("2d");
+        overlayCanvas.width = previewImg.naturalWidth;
+        overlayCanvas.height = previewImg.naturalHeight;
+        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-        // Draw Tag
-        ctx.fillStyle = "#00f2fe";
-        ctx.fillRect(x1, y1 - 25, 140, 25);
-        ctx.fillStyle = "#0b0f19";
-        ctx.fillText(`Target ${idx+1} [${Math.round(det.confidence*100)}%]`, x1 + 5, y1 - 7);
-        ctx.fillStyle = "rgba(0, 242, 254, 0.2)"; // reset
-      });
+        detections.forEach((det, i) => {
+          const [x1, y1, x2, y2] = det.bbox;
+          const w = x2 - x1;
+          const h = y2 - y1;
+
+          ctx.strokeStyle = "#58a6ff";
+          ctx.lineWidth = 3;
+          ctx.setLineDash([]);
+          ctx.strokeRect(x1, y1, w, h);
+
+          ctx.fillStyle = "rgba(88, 166, 255, 0.12)";
+          ctx.fillRect(x1, y1, w, h);
+
+          // Tag
+          const label = "#" + (i + 1) + "  " + det.estimated_weight_g.toFixed(1) + "g";
+          ctx.font = "bold 14px 'IBM Plex Mono', monospace";
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = "#58a6ff";
+          ctx.fillRect(x1, y1 - 22, tw + 12, 22);
+          ctx.fillStyle = "#0d1117";
+          ctx.fillText(label, x1 + 6, y1 - 6);
+        });
+      } catch (e) {
+        console.warn("Canvas draw error:", e);
+      }
     }
 
-    function showResults(data) {
-      resultsPanel.style.display = "block";
-      detectionsList.innerHTML = "";
-      
-      if (data.fish_count === 0) {
-        detectionsList.innerHTML = `<p style="text-align:center; color:var(--text-muted);">No biological mass detected.</p>`;
+    // ── Render Results ──
+    function renderResults(data) {
+      emptyState.style.display = "none";
+      resultsBody.style.display = "block";
+      resultsBody.classList.add("fade-in");
+
+      const now = new Date();
+      resultTimestamp.textContent = now.toLocaleTimeString() + " · " + now.toLocaleDateString();
+
+      // Summary
+      summaryRows.innerHTML = `
+        <tr><td>Specimens Detected</td><td class="val-highlight">${data.fish_count}</td></tr>
+        <tr><td>Total Estimated Biomass</td><td class="val-success">${data.total_estimated_biomass_g.toFixed(2)} g</td></tr>
+        <tr><td>Confidence Threshold</td><td>${data.parameters.confidence_threshold}</td></tr>
+        <tr><td>Scale Factor</td><td>${data.parameters.pixels_per_cm} px/cm</td></tr>
+        <tr><td>Allometric Coeff. (a)</td><td>${data.parameters.allometric_a}</td></tr>
+        <tr><td>Allometric Exponent (b)</td><td>${data.parameters.allometric_b}</td></tr>
+      `;
+
+      // Detection rows
+      detRows.innerHTML = "";
+      if (data.detections.length === 0) {
+        detRows.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px;">No detections above threshold.</td></tr>';
         return;
       }
 
-      data.detections.forEach((det, idx) => {
-        const row = document.createElement("div");
-        row.className = "result-card";
+      data.detections.forEach((det) => {
+        const confPct = (det.confidence * 100).toFixed(1);
+        let confClass = "conf-low";
+        if (det.confidence >= 0.7) confClass = "conf-high";
+        else if (det.confidence >= 0.4) confClass = "conf-mid";
+
+        const row = document.createElement("tr");
         row.innerHTML = `
-          <div class="metric">
-            <div class="metric-value">${det.estimated_length_cm.toFixed(1)}<span>cm</span></div>
-            <div class="metric-label">Est. Length</div>
-          </div>
-          <div class="divider"></div>
-          <div class="metric">
-            <div class="metric-value">${det.estimated_weight_g.toFixed(1)}<span>g</span></div>
-            <div class="metric-label">Biomass (W)</div>
-          </div>
+          <td>${det.detection_id}</td>
+          <td style="text-transform:capitalize">${det.class_name}</td>
+          <td><span class="conf-badge ${confClass}">${confPct}%</span></td>
+          <td>${det.estimated_length_cm.toFixed(2)}</td>
+          <td><strong>${det.estimated_weight_g.toFixed(2)}</strong></td>
         `;
-        detectionsList.appendChild(row);
+        detRows.appendChild(row);
       });
     }
 
-    initCamera();
+    // ── Status ──
+    function setStatus(msg, type) {
+      statusMsg.className = "status-msg " + type;
+      statusText.textContent = msg;
+      statusSpin.style.display = type === "loading" ? "inline-block" : "none";
+    }
+
+    function hideStatus() {
+      statusMsg.className = "status-msg";
+    }
   </script>
 </body>
 </html>
