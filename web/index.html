@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fish Biomass Estimation System — YOLOv8 Deep Learning</title>
-  <meta name="description" content="Automated fish biomass estimation using YOLOv8 object detection and allometric length-weight regression." />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <meta name="description"
+    content="Automated fish biomass estimation using YOLOv8 object detection and allometric length-weight regression." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
   <style>
     :root {
       --bg: #0d1117;
@@ -25,11 +29,15 @@
       --warning-light: rgba(210, 153, 34, 0.15);
       --accent: #39d2c0;
       --radius: 8px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.25);
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.25);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -111,8 +119,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
     }
 
     .model-tag {
@@ -137,7 +152,10 @@
     }
 
     @media (max-width: 960px) {
-      .layout { grid-template-columns: 1fr; padding: 16px; }
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
     }
 
     /* ── Panel ── */
@@ -309,14 +327,19 @@
       flex: 1;
     }
 
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
 
     .btn-primary {
       background: var(--primary);
       color: #0d1117;
     }
 
-    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+    }
 
     .btn-outline {
       background: var(--bg);
@@ -324,7 +347,9 @@
       border: 1px solid var(--border);
     }
 
-    .btn-outline:hover { background: var(--bg); }
+    .btn-outline:hover {
+      background: var(--bg);
+    }
 
     /* ── Status ── */
     .status-msg {
@@ -369,7 +394,11 @@
       animation: rotate 0.7s linear infinite;
     }
 
-    @keyframes rotate { to { transform: rotate(360deg); } }
+    @keyframes rotate {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     /* ── Results: Empty ── */
     .empty-state {
@@ -390,7 +419,9 @@
     }
 
     /* ── Results: Populated ── */
-    .results-body { display: none; }
+    .results-body {
+      display: none;
+    }
 
     /* ── Summary Table ── */
     .summary-table {
@@ -491,9 +522,20 @@
       font-family: 'IBM Plex Mono', monospace;
     }
 
-    .conf-high { background: var(--success-light); color: var(--success); }
-    .conf-mid { background: var(--warning-light); color: var(--warning); }
-    .conf-low { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+    .conf-high {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    .conf-mid {
+      background: var(--warning-light);
+      color: var(--warning);
+    }
+
+    .conf-low {
+      background: rgba(248, 81, 73, 0.15);
+      color: #f85149;
+    }
 
     /* ── Methodology Footer ── */
     .methodology {
@@ -522,12 +564,23 @@
 
     /* ── Animation ── */
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+
+    .fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
   </style>
 </head>
+
 <body>
 
   <!-- Top Bar -->
@@ -559,8 +612,9 @@
 
           <div class="upload-zone" id="uploadZone">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M12 16V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M12 16V4m0 0L8 8m4-4l4 4" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17" stroke-linecap="round"
+                stroke-linejoin="round" />
             </svg>
             <div class="upload-title">Upload specimen image</div>
             <div class="upload-hint">Drag and drop or <a href="#">browse files</a> · JPG, PNG</div>
@@ -598,7 +652,8 @@
 
       <!-- Methodology Note -->
       <div class="methodology" style="margin-top: 20px;">
-        <strong>Methodology:</strong> This system uses a YOLOv8n object detection model trained on 1,445 annotated fish images
+        <strong>Methodology:</strong> This system uses a YOLOv8n object detection model trained on 1,445 annotated fish
+        images
         (80/10/10 train-val-test split). Fish length is estimated from bounding box pixel dimensions scaled via the
         <code>px/cm</code> parameter. Biomass is computed using the standard allometric equation
         <code>W = a × L<sup>b</sup></code> where <code>a = 0.01</code>, <code>b = 3.0</code>.
@@ -611,21 +666,28 @@
     <div class="panel">
       <div class="panel-header">
         <h2>Estimation Output</h2>
-        <span id="resultTimestamp" style="font-size:0.72rem; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;"></span>
+        <span id="resultTimestamp"
+          style="font-size:0.72rem; color:var(--text-muted); font-family:'IBM Plex Mono',monospace;"></span>
       </div>
       <div class="panel-body">
 
         <div class="empty-state" id="emptyState">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            <path
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <p>No results yet.<br/>Upload an image and run inference to begin.</p>
+          <p>No results yet.<br />Upload an image and run inference to begin.</p>
         </div>
 
         <div class="results-body" id="resultsBody">
           <!-- Summary -->
           <table class="summary-table" id="summaryTable">
-            <thead><tr><th colspan="2">Summary</th></tr></thead>
+            <thead>
+              <tr>
+                <th colspan="2">Summary</th>
+              </tr>
+            </thead>
             <tbody id="summaryRows"></tbody>
           </table>
 
@@ -838,4 +900,5 @@
     }
   </script>
 </body>
+
 </html>
