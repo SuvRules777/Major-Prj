@@ -10,6 +10,8 @@
   <link
     href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
   <style>
     :root {
       --bg: #0d1117;
@@ -526,6 +528,61 @@
       animation: fadeIn 0.35s ease-out forwards;
     }
 
+    /* ── Charts Grid ── */
+    .charts-section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .charts-section-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .chart-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .chart-panel:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .chart-panel-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .chart-panel-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .chart-panel canvas {
+      width: 100% !important;
+      max-height: 340px;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
       .container {
@@ -538,6 +595,10 @@
 
       .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
       }
 
       .controls-row {
@@ -611,6 +672,42 @@
         <div class="metric-label">Max Error</div>
         <div class="metric-value warning" id="mMaxErr">—</div>
         <div class="metric-sub">Worst single deviation</div>
+      </div>
+    </div>
+
+    <!-- ── Diagnostic Charts ── -->
+    <div class="fade-in" style="animation-delay:0.1s; margin-bottom: 8px;">
+      <div class="charts-section-title">Diagnostic Visualizations</div>
+      <div class="charts-section-desc">Interactive regression diagnostics — hover over data points for sample details.</div>
+    </div>
+
+    <div class="charts-grid fade-in" style="animation-delay:0.12s">
+      <!-- 1. R² Scatter -->
+      <div class="chart-panel" id="chartPanelR2">
+        <div class="chart-panel-title">Predicted vs Actual Weight</div>
+        <div class="chart-panel-sub">R² Coefficient of Determination · Perfect prediction = diagonal</div>
+        <canvas id="chartR2"></canvas>
+      </div>
+
+      <!-- 2. MAE per species -->
+      <div class="chart-panel" id="chartPanelMAE">
+        <div class="chart-panel-title">Mean Absolute Error by Species</div>
+        <div class="chart-panel-sub">MAE (g) — lower is better</div>
+        <canvas id="chartMAE"></canvas>
+      </div>
+
+      <!-- 3. RMSE per species -->
+      <div class="chart-panel" id="chartPanelRMSE">
+        <div class="chart-panel-title">Root Mean Square Error by Species</div>
+        <div class="chart-panel-sub">RMSE (g) — penalises large deviations</div>
+        <canvas id="chartRMSE"></canvas>
+      </div>
+
+      <!-- 4. Bland-Altman -->
+      <div class="chart-panel" id="chartPanelBA">
+        <div class="chart-panel-title">Bland–Altman Plot</div>
+        <div class="chart-panel-sub">Difference vs Mean — ±1.96 SD limits of agreement</div>
+        <canvas id="chartBA"></canvas>
       </div>
     </div>
 
@@ -701,6 +798,7 @@
         allSamples = data.samples.map((s, i) => ({ ...s, index: i + 1 }));
         populateSpeciesFilter(allSamples);
         renderTable(allSamples);
+        renderCharts(allSamples, data.summary);
       } catch (err) {
         document.getElementById("tableBody").innerHTML = `
           <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--danger);">
@@ -823,6 +921,397 @@
         th.classList.add(dirSel.value === "asc" ? "sorted-asc" : "sorted-desc");
       });
     });
+
+    // ── Chart Rendering ──
+    const SPECIES_COLORS = {
+      Bream:     { bg: 'rgba(88,166,255,0.65)',  border: '#58a6ff' },
+      Roach:     { bg: 'rgba(210,153,34,0.65)',  border: '#d29922' },
+      Whitefish: { bg: 'rgba(139,148,158,0.65)', border: '#b1bac4' },
+      Parkki:    { bg: 'rgba(163,113,247,0.65)', border: '#a371f7' },
+      Perch:     { bg: 'rgba(63,185,80,0.65)',   border: '#3fb950' },
+      Pike:      { bg: 'rgba(57,210,192,0.65)',   border: '#39d2c0' },
+      Smelt:     { bg: 'rgba(219,97,162,0.65)',   border: '#db61a2' },
+    };
+    const fallbackColor = { bg: 'rgba(88,166,255,0.5)', border: '#58a6ff' };
+
+    function speciesColor(sp) { return SPECIES_COLORS[sp] || fallbackColor; }
+
+    // shared dark-theme defaults
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.borderColor = '#21262d';
+    Chart.defaults.font.family = "'IBM Plex Sans', sans-serif";
+
+    function renderCharts(samples, summary) {
+      renderR2Chart(samples, summary);
+      renderMAEChart(samples);
+      renderRMSEChart(samples);
+      renderBlandAltmanChart(samples);
+    }
+
+    // ── 1. R² Scatter ──
+    function renderR2Chart(samples, summary) {
+      const speciesList = [...new Set(samples.map(s => s.species))].sort();
+      const datasets = speciesList.map(sp => {
+        const pts = samples.filter(s => s.species === sp);
+        const c = speciesColor(sp);
+        return {
+          label: sp,
+          data: pts.map(p => ({ x: p.actual_weight, y: p.predicted_weight, sample: p })),
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          borderWidth: 1.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        };
+      });
+
+      const maxVal = Math.max(
+        ...samples.map(s => s.actual_weight),
+        ...samples.map(s => s.predicted_weight)
+      ) * 1.08;
+
+      new Chart(document.getElementById('chartR2'), {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.15,
+          scales: {
+            x: {
+              title: { display: true, text: 'Actual Weight (g)', color: '#b1bac4', font: { weight: 600 } },
+              min: 0, max: maxVal,
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+            y: {
+              title: { display: true, text: 'Predicted Weight (g)', color: '#b1bac4', font: { weight: 600 } },
+              min: 0, max: maxVal,
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+          },
+          plugins: {
+            legend: { labels: { usePointStyle: true, pointStyle: 'circle', padding: 14 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const s = ctx.raw.sample;
+                  return `${s.species}: Actual ${s.actual_weight.toFixed(1)}g → Pred ${s.predicted_weight.toFixed(1)}g  (err ${s.percentage_error.toFixed(1)}%)`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                perfectLine: {
+                  type: 'line',
+                  xMin: 0, xMax: maxVal,
+                  yMin: 0, yMax: maxVal,
+                  borderColor: 'rgba(248,81,73,0.6)',
+                  borderWidth: 2,
+                  borderDash: [6, 4],
+                  label: {
+                    display: true,
+                    content: 'Perfect Prediction',
+                    position: 'end',
+                    backgroundColor: 'rgba(248,81,73,0.15)',
+                    color: '#f85149',
+                    font: { size: 10, weight: 600 },
+                    padding: 4,
+                  }
+                },
+                r2Label: {
+                  type: 'label',
+                  xValue: maxVal * 0.15,
+                  yValue: maxVal * 0.92,
+                  content: ['R² = ' + summary.r2.toFixed(4)],
+                  backgroundColor: 'rgba(63,185,80,0.15)',
+                  color: '#3fb950',
+                  font: { size: 14, weight: 700, family: "'IBM Plex Mono', monospace" },
+                  padding: { x: 10, y: 6 },
+                  borderRadius: 4,
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ── 2. MAE Bar Chart ──
+    function renderMAEChart(samples) {
+      const speciesList = [...new Set(samples.map(s => s.species))].sort();
+      const maePerSpecies = speciesList.map(sp => {
+        const pts = samples.filter(s => s.species === sp);
+        const mae = pts.reduce((sum, p) => sum + p.absolute_error, 0) / pts.length;
+        return { species: sp, mae };
+      });
+
+      // Overall MAE
+      const overallMAE = samples.reduce((sum, p) => sum + p.absolute_error, 0) / samples.length;
+
+      new Chart(document.getElementById('chartMAE'), {
+        type: 'bar',
+        data: {
+          labels: maePerSpecies.map(m => m.species),
+          datasets: [{
+            label: 'MAE (g)',
+            data: maePerSpecies.map(m => m.mae),
+            backgroundColor: maePerSpecies.map(m => speciesColor(m.species).bg),
+            borderColor: maePerSpecies.map(m => speciesColor(m.species).border),
+            borderWidth: 1.5,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.15,
+          indexAxis: 'y',
+          scales: {
+            x: {
+              title: { display: true, text: 'MAE (g)', color: '#b1bac4', font: { weight: 600 } },
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#b1bac4', font: { weight: 600 } },
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `MAE: ${ctx.parsed.x.toFixed(2)} g`
+              }
+            },
+            annotation: {
+              annotations: {
+                overallLine: {
+                  type: 'line',
+                  xMin: overallMAE, xMax: overallMAE,
+                  borderColor: 'rgba(248,81,73,0.7)',
+                  borderWidth: 2,
+                  borderDash: [6, 4],
+                  label: {
+                    display: true,
+                    content: 'Overall: ' + overallMAE.toFixed(2) + 'g',
+                    position: 'start',
+                    backgroundColor: 'rgba(248,81,73,0.15)',
+                    color: '#f85149',
+                    font: { size: 10, weight: 600 },
+                    padding: 4,
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ── 3. RMSE Bar Chart ──
+    function renderRMSEChart(samples) {
+      const speciesList = [...new Set(samples.map(s => s.species))].sort();
+      const rmsePerSpecies = speciesList.map(sp => {
+        const pts = samples.filter(s => s.species === sp);
+        const mse = pts.reduce((sum, p) => sum + Math.pow(p.actual_weight - p.predicted_weight, 2), 0) / pts.length;
+        return { species: sp, rmse: Math.sqrt(mse) };
+      });
+
+      // Overall RMSE
+      const overallMSE = samples.reduce((sum, p) => sum + Math.pow(p.actual_weight - p.predicted_weight, 2), 0) / samples.length;
+      const overallRMSE = Math.sqrt(overallMSE);
+
+      new Chart(document.getElementById('chartRMSE'), {
+        type: 'bar',
+        data: {
+          labels: rmsePerSpecies.map(m => m.species),
+          datasets: [{
+            label: 'RMSE (g)',
+            data: rmsePerSpecies.map(m => m.rmse),
+            backgroundColor: rmsePerSpecies.map(m => speciesColor(m.species).bg),
+            borderColor: rmsePerSpecies.map(m => speciesColor(m.species).border),
+            borderWidth: 1.5,
+            borderRadius: 4,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.15,
+          indexAxis: 'y',
+          scales: {
+            x: {
+              title: { display: true, text: 'RMSE (g)', color: '#b1bac4', font: { weight: 600 } },
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+            y: {
+              grid: { display: false },
+              ticks: { color: '#b1bac4', font: { weight: 600 } },
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `RMSE: ${ctx.parsed.x.toFixed(2)} g`
+              }
+            },
+            annotation: {
+              annotations: {
+                overallLine: {
+                  type: 'line',
+                  xMin: overallRMSE, xMax: overallRMSE,
+                  borderColor: 'rgba(248,81,73,0.7)',
+                  borderWidth: 2,
+                  borderDash: [6, 4],
+                  label: {
+                    display: true,
+                    content: 'Overall: ' + overallRMSE.toFixed(2) + 'g',
+                    position: 'start',
+                    backgroundColor: 'rgba(248,81,73,0.15)',
+                    color: '#f85149',
+                    font: { size: 10, weight: 600 },
+                    padding: 4,
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ── 4. Bland–Altman Plot ──
+    function renderBlandAltmanChart(samples) {
+      // Mean of actual & predicted
+      const points = samples.map(s => {
+        const mean = (s.actual_weight + s.predicted_weight) / 2;
+        const diff = s.actual_weight - s.predicted_weight; // actual − predicted
+        return { x: mean, y: diff, sample: s };
+      });
+
+      // Statistics
+      const diffs = points.map(p => p.y);
+      const meanDiff = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+      const sdDiff = Math.sqrt(diffs.reduce((sum, d) => sum + Math.pow(d - meanDiff, 2), 0) / diffs.length);
+      const upperLoA = meanDiff + 1.96 * sdDiff;
+      const lowerLoA = meanDiff - 1.96 * sdDiff;
+
+      const speciesList = [...new Set(samples.map(s => s.species))].sort();
+      const datasets = speciesList.map(sp => {
+        const pts = points.filter(p => p.sample.species === sp);
+        const c = speciesColor(sp);
+        return {
+          label: sp,
+          data: pts,
+          backgroundColor: c.bg,
+          borderColor: c.border,
+          borderWidth: 1.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        };
+      });
+
+      const xMax = Math.max(...points.map(p => p.x)) * 1.1;
+      const yAbsMax = Math.max(Math.abs(upperLoA), Math.abs(lowerLoA), Math.max(...diffs.map(Math.abs))) * 1.15;
+
+      new Chart(document.getElementById('chartBA'), {
+        type: 'scatter',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 1.15,
+          scales: {
+            x: {
+              title: { display: true, text: 'Mean of Actual & Predicted (g)', color: '#b1bac4', font: { weight: 600 } },
+              min: 0, max: xMax,
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+            y: {
+              title: { display: true, text: 'Difference: Actual − Predicted (g)', color: '#b1bac4', font: { weight: 600 } },
+              min: -yAbsMax, max: yAbsMax,
+              grid: { color: 'rgba(48,54,61,0.5)' },
+              ticks: { color: '#8b949e' },
+            },
+          },
+          plugins: {
+            legend: { labels: { usePointStyle: true, pointStyle: 'circle', padding: 14 } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const s = ctx.raw.sample;
+                  return `${s.species}: Mean ${ctx.raw.x.toFixed(1)}g, Diff ${ctx.raw.y.toFixed(1)}g`;
+                }
+              }
+            },
+            annotation: {
+              annotations: {
+                meanLine: {
+                  type: 'line',
+                  yMin: meanDiff, yMax: meanDiff,
+                  borderColor: '#58a6ff',
+                  borderWidth: 2,
+                  borderDash: [6, 4],
+                  label: {
+                    display: true,
+                    content: 'Mean Diff: ' + meanDiff.toFixed(2) + 'g',
+                    position: 'start',
+                    backgroundColor: 'rgba(88,166,255,0.15)',
+                    color: '#58a6ff',
+                    font: { size: 10, weight: 600 },
+                    padding: 4,
+                  }
+                },
+                upperLoA: {
+                  type: 'line',
+                  yMin: upperLoA, yMax: upperLoA,
+                  borderColor: 'rgba(248,81,73,0.6)',
+                  borderWidth: 1.5,
+                  borderDash: [4, 4],
+                  label: {
+                    display: true,
+                    content: '+1.96 SD: ' + upperLoA.toFixed(2) + 'g',
+                    position: 'end',
+                    backgroundColor: 'rgba(248,81,73,0.12)',
+                    color: '#f85149',
+                    font: { size: 9, weight: 600 },
+                    padding: 3,
+                  }
+                },
+                lowerLoA: {
+                  type: 'line',
+                  yMin: lowerLoA, yMax: lowerLoA,
+                  borderColor: 'rgba(248,81,73,0.6)',
+                  borderWidth: 1.5,
+                  borderDash: [4, 4],
+                  label: {
+                    display: true,
+                    content: '−1.96 SD: ' + lowerLoA.toFixed(2) + 'g',
+                    position: 'end',
+                    backgroundColor: 'rgba(248,81,73,0.12)',
+                    color: '#f85149',
+                    font: { size: 9, weight: 600 },
+                    padding: 3,
+                  }
+                },
+                zeroLine: {
+                  type: 'line',
+                  yMin: 0, yMax: 0,
+                  borderColor: 'rgba(139,148,158,0.3)',
+                  borderWidth: 1,
+                }
+              }
+            }
+          }
+        }
+      });
+    }
 
     // ── Init ──
     loadData();
