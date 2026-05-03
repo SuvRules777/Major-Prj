@@ -33,6 +33,27 @@
       --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.25);
     }
 
+    [data-theme="light"] {
+      --bg: #f0f2f5;
+      --white: #ffffff;
+      --surface: #ffffff;
+      --border: #d0d7de;
+      --border-light: #e1e4e8;
+      --text: #1f2328;
+      --text-secondary: #57606a;
+      --text-muted: #6e7781;
+      --primary: #0969da;
+      --primary-light: rgba(9, 105, 218, 0.1);
+      --primary-dark: #0550ae;
+      --success: #1a7f37;
+      --success-light: rgba(26, 127, 55, 0.1);
+      --warning: #9a6700;
+      --warning-light: rgba(154, 103, 0, 0.1);
+      --accent: #1b9e8c;
+      --shadow: 0 1px 3px rgba(31, 35, 40, 0.12), 0 1px 2px rgba(31, 35, 40, 0.06);
+      --shadow-md: 0 4px 6px -1px rgba(31, 35, 40, 0.1), 0 2px 4px -1px rgba(31, 35, 40, 0.06);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -46,6 +67,7 @@
       min-height: 100vh;
       line-height: 1.6;
       font-size: 15px;
+      transition: background 0.3s ease, color 0.3s ease;
     }
 
     /* ── Top Bar ── */
@@ -578,6 +600,87 @@
     .fade-in {
       animation: fadeIn 0.3s ease-out forwards;
     }
+
+    /* ── Theme Toggle ── */
+    .theme-toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      border-radius: 14px;
+      background: var(--border);
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      transition: background 0.3s ease;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle:hover {
+      background: var(--text-muted);
+    }
+
+    .theme-toggle-knob {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    [data-theme="light"] .theme-toggle-knob {
+      transform: translateX(24px);
+    }
+
+    .theme-toggle-icon-dark,
+    .theme-toggle-icon-light {
+      position: absolute;
+      font-size: 12px;
+      line-height: 1;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .theme-toggle-icon-dark {
+      right: 7px;
+      opacity: 1;
+    }
+
+    .theme-toggle-icon-light {
+      left: 7px;
+      opacity: 0.4;
+    }
+
+    [data-theme="light"] .theme-toggle-icon-dark {
+      opacity: 0.4;
+    }
+
+    [data-theme="light"] .theme-toggle-icon-light {
+      opacity: 1;
+    }
+
+    .topbar,
+    .panel,
+    .upload-zone,
+    .methodology,
+    .param-group input {
+      transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    [data-theme="light"] .btn-primary {
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .preview-container {
+      background: #e8eaed;
+    }
   </style>
 </head>
 
@@ -591,12 +694,18 @@
       <span class="topbar-subtitle">Computer Vision & Deep Learning</span>
     </div>
     <div class="topbar-right">
-      <a href="/validation" style="font-size:0.82rem;color:#58a6ff;text-decoration:none;font-weight:500;">Validation Report →</a>
+      <a href="/validation"
+        style="font-size:0.82rem;color:var(--primary);text-decoration:none;font-weight:500;">Validation Report →</a>
       <span class="model-tag">YOLOv8n · mAP@50: 94.9%</span>
       <span class="status-indicator">
         <span class="status-dot"></span>
         Model Active
       </span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode" title="Toggle light/dark mode">
+        <span class="theme-toggle-icon-light">☀️</span>
+        <span class="theme-toggle-icon-dark">🌙</span>
+        <span class="theme-toggle-knob"></span>
+      </button>
     </div>
   </header>
 
@@ -899,6 +1008,25 @@
     function hideStatus() {
       statusMsg.className = "status-msg";
     }
+
+    // ── Theme Toggle ──
+    const themeToggle = document.getElementById("themeToggle");
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    }
+
+    themeToggle.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme");
+      const next = current === "light" ? "dark" : "light";
+      if (next === "dark") {
+        document.documentElement.removeAttribute("data-theme");
+        localStorage.setItem("theme", "dark");
+      } else {
+        document.documentElement.setAttribute("data-theme", "light");
+        localStorage.setItem("theme", "light");
+      }
+    });
   </script>
 </body>
 
